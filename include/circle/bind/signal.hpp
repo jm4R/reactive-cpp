@@ -174,11 +174,12 @@ private:
 
 } // namespace detail
 
-struct connection
+class connection
 {
     template <typename... Args>
     friend class signal;
 
+public:
     connection() = default;
 
     [[nodiscard]] bool active() const

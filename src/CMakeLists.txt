@@ -1,5 +1,6 @@
 add_library(circle-bind INTERFACE
     ${circle-bind_SOURCE_DIR}/include/circle/bind/signal.hpp
+    ${circle-bind_SOURCE_DIR}/include/circle/bind/property.hpp
 )
 
 target_include_directories(circle-bind INTERFACE
