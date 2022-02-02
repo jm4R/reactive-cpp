@@ -220,4 +220,144 @@ TEST_CASE("signal")
         s.emit(5);
         REQUIRE(global_int == 2);
     }
+
+    SECTION("move constructor")
+    {
+        int res{};
+
+        circle::signal<int> s1;
+        s1.connect([&](int v){ res = v; });
+        auto s2 = std::move(s1);
+        s2.emit(5);
+        REQUIRE(res == 5);
+    }
+
+    SECTION("move assignment operator")
+    {
+        int res{};
+
+        circle::signal<int> s1;
+        s1.connect([&](int v){ res = v; });
+        circle::signal<int> s2;
+        s2 = std::move(s1);
+        s2.emit(5);
+        REQUIRE(res == 5);
+    }
+}
+
+TEST_CASE("connection")
+{
+    SECTION("simple")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        connection c = s.connect([&](int v){ res = v; });
+        s.emit(5);
+        c.disconnect();
+        s.emit(10);
+        REQUIRE(res == 5);
+    }
+
+    SECTION("copy")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        connection c = s.connect([&](int v){ res = v; });
+        s.emit(5);
+        auto c2 = c;
+        c2.disconnect();
+        s.emit(10);
+        REQUIRE(res == 5);
+    }
+
+    SECTION("move")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        connection c = s.connect([&](int v){ res = v; });
+        s.emit(5);
+        auto c2 = std::move(c);
+        c2.disconnect();
+        s.emit(10);
+        REQUIRE(res == 5);
+    }
+
+    SECTION("belongs_to")
+    {
+        int res{};
+
+        circle::signal<int> s1;
+        circle::signal<float> s2;
+        connection c1 = s1.connect([](){});
+        connection c2 = s2.connect([](){});
+        REQUIRE(c1.belongs_to(s1));
+        REQUIRE(c2.belongs_to(s2));
+        REQUIRE_FALSE(c1.belongs_to(s2));
+        REQUIRE_FALSE(c2.belongs_to(s1));
+    }
+}
+
+TEST_CASE("scoped_connection")
+{
+    SECTION("simple")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        {
+            scoped_connection c = s.connect([&](int v){ res = v; });
+            s.emit(5);
+        }
+        s.emit(10);
+        REQUIRE(res == 5);
+    }
+
+    SECTION("release")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        scoped_connection c = s.connect([&](int v){ res = v; });
+        s.emit(5);
+        c.release();
+        s.emit(10);
+        REQUIRE(res == 10);
+    }
+
+    SECTION("disconnect manually")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        scoped_connection c = s.connect([&](int v){ res = v; });
+        s.emit(5);
+        c.disconnect();
+        s.emit(10);
+        REQUIRE(res == 5);
+    }
+
+    SECTION("operator=(connection) disconnects old connection")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        scoped_connection c = s.connect([&](int v) { res += v; });
+        c = s.connect([&](int v) { res += v * 100; });
+        s.emit(5);
+        REQUIRE(res == 500);
+    }
+
+    SECTION("operator=(scoped_connection&&) disconnects old connection")
+    {
+        int res{};
+
+        circle::signal<int> s;
+        scoped_connection c = s.connect([&](int v) { res += v; });
+        c = scoped_connection{};
+        s.emit(5);
+        REQUIRE(res == 0);
+    }
 }

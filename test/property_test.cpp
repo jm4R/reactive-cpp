@@ -25,7 +25,7 @@ TEST_CASE("property")
         REQUIRE(p == 5);
     }
 
-    SECTION("observe value")
+    SECTION("value_changed")
     {
         circle::property<int> p{};
         int new_value = 0;
@@ -42,6 +42,26 @@ TEST_CASE("property")
             circle::property<int> p2 = std::move(p);
             p2 = 5;
             REQUIRE(new_value == 5);
+        }
+    }
+
+    SECTION("moved")
+    {
+        circle::property<int> p{};
+        circle::property<int>* addr = &p;
+        p.moved().connect([&](property<int>& p) { addr = &p; });
+
+        SECTION("moved by move constructor")
+        {
+            circle::property<int> p2 = std::move(p);
+            REQUIRE(addr == &p2);
+        }
+
+        SECTION("moved by move assignment operator")
+        {
+            circle::property<int> p2;
+            p2 = std::move(p);
+            REQUIRE(addr == &p2);
         }
     }
 }

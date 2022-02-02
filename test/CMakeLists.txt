@@ -1,6 +1,8 @@
 CPMAddPackage("gh:catchorg/Catch2@2.13.8")
 
 add_executable(circle-bind-test
+    bind_test.cpp
+    properties_observer_test.cpp
     property_test.cpp
     signal_test.cpp
 

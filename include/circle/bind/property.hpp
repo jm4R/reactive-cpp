@@ -1,6 +1,7 @@
 #pragma once
 
 #include <circle/bind/signal.hpp>
+#include <circle/bind/utils.hpp>
 
 #include <memory>
 
@@ -29,8 +30,29 @@ public:
     property(const property&) = delete;
     property& operator=(const property&) = delete;
 
-    property(property&&) = default;
-    property& operator=(property&&) = default;
+    property(property&& other)
+        : value_{std::move(other.value_)},
+          // dirty_{other.dirty_},
+          value_changed_{std::move(other.value_changed_)},
+          moved_{std::move(other.moved_)}
+    {
+        other.provider_observer_ = {};
+        assign(std::move(other.provider_));
+        moved_.emit(*this);
+    }
+
+    property& operator=(property&& other)
+    {
+        value_ = std::move(other.value_);
+        // dirty_ = other.dirty_;
+        value_changed_ = std::move(other.value_changed_);
+        moved_ = std::move(other.moved_);
+
+        other.provider_observer_ = {};
+        assign(std::move(other.provider_));
+        moved_.emit(*this);
+        return *this;
+    }
 
     property& operator=(T value)
     {
@@ -39,6 +61,26 @@ public:
     }
 
     property& operator=(value_provider_ptr<T> provider)
+    {
+        assign(std::move(provider));
+        return *this;
+    }
+
+    bool assign(T value)
+    {
+        if (value != value_)
+        {
+            value_ = std::move(value);
+            value_changed_.emit(*this);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool assign(value_provider_ptr<T> provider)
     {
         detach();
         if (provider)
@@ -50,24 +92,12 @@ public:
             });
             dirty_ = true;
             if (materialize())
+            {
                 value_changed_.emit(*this);
+                return true;
+            }
         }
-        return *this;
-    }
-
-    bool assign(T value)
-    {
-        if (value != value_)
-        {
-            using std::swap;
-            swap(value, value_);
-            value_changed_.emit(*this);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        return false;
     }
 
     bool detach()
@@ -89,6 +119,7 @@ public:
     }
 
     signal<property&>& value_changed() { return value_changed_; }
+    signal<property&>& moved() { return moved_; }
 
 private:
     bool materialize() const
@@ -108,10 +139,21 @@ private:
 
 private:
     T value_;
-    mutable std::unique_ptr<value_provider<T>> provider_;
+    mutable value_provider_ptr<T> provider_;
     mutable bool dirty_{};
-    connection provider_observer_;
+    scoped_connection provider_observer_;
     signal<property&> value_changed_;
+    signal<property&> moved_;
+};
+
+template <typename T>
+struct is_property : std::false_type
+{
+};
+
+template <typename T>
+struct is_property<property<T>> : std::true_type
+{
 };
 
 } // namespace circle

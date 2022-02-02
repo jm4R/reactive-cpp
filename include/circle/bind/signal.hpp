@@ -202,7 +202,7 @@ public:
     template <typename T>
     [[nodiscard]] bool belongs_to(const T& v)
     {
-        return v.owns_connection(*this);
+        return v.owns(*this);
     }
 
     bool block(bool val)
@@ -339,14 +339,41 @@ private:
     std::shared_ptr<connections_type> connections_;
 };
 
-template<typename... Args>
-struct overload_impl
+class scoped_connection
 {
-    template <typename R, typename T>
-    using type = R (T::*)(Args...);
-};
+public:
+    explicit scoped_connection() = default;
 
-template <typename... Args>
-using overload = typename overload_impl<Args...>::type;
+    scoped_connection(const scoped_connection&) = delete;
+    scoped_connection& operator=(const scoped_connection&) = delete;
+
+    explicit scoped_connection(scoped_connection&& other) noexcept
+        : c_{std::exchange(other.c_, {})}
+    {
+    }
+
+    scoped_connection& operator=(scoped_connection&& other)
+    {
+        c_.disconnect();
+        c_ = std::exchange(other.c_, {});
+        return *this;
+    }
+
+    scoped_connection(connection src) : c_{std::move(src)} {}
+    scoped_connection& operator=(connection src)
+    {
+        c_.disconnect();
+        c_ = std::move(src);
+        return *this;
+    }
+    ~scoped_connection() { c_.disconnect(); }
+
+    connection& get() { return c_; }
+    void release() { c_ = {}; }
+    void disconnect() { c_.disconnect(); }
+
+private:
+    connection c_;
+};
 
 } // namespace circle
