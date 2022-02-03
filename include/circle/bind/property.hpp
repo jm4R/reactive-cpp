@@ -36,7 +36,7 @@ public:
           value_changed_{std::move(other.value_changed_)},
           moved_{std::move(other.moved_)}
     {
-        other.provider_observer_ = {};
+        other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
         moved_.emit(*this);
     }
@@ -48,7 +48,7 @@ public:
         value_changed_ = std::move(other.value_changed_);
         moved_ = std::move(other.moved_);
 
-        other.provider_observer_ = {};
+        other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
         moved_.emit(*this);
         return *this;
@@ -112,10 +112,15 @@ public:
         return false;
     }
 
-    operator const T&() const
+    const T& get() const
     {
         materialize();
         return value_;
+    }
+
+    operator const T&() const
+    {
+        return get();
     }
 
     signal<property&>& value_changed() { return value_changed_; }
