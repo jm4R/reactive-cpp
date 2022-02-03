@@ -11,9 +11,9 @@ template <typename T>
 class value_provider
 {
 public:
-    virtual ~value_provider() {};
+    virtual ~value_provider() {}
     virtual signal<>& updated() = 0;
-    virtual const T& get() = 0;
+    virtual T get() = 0;
 };
 
 template <typename T>
@@ -154,6 +154,55 @@ struct is_property : std::false_type
 template <typename T>
 struct is_property<property<T>> : std::true_type
 {
+};
+
+template <typename T>
+class property_ref // read-only for now
+{
+public:
+    property_ref(property<T>& prop)
+        : property_{&prop}, moved_connection_{connect_moved()}
+    {
+    }
+
+    property_ref(const property_ref& other)
+        : property_{other.property_}, moved_connection_{connect_moved()}
+    {
+    }
+    property_ref& operator=(const property_ref& other)
+    {
+        property_ = other.property_;
+        moved_connection_ = connect_moved();
+    }
+
+    property_ref(property_ref&& other)
+        : property_{other.property_}, moved_connection_{connect_moved()}
+    {
+        other.moved_connection_.disconnect();
+    }
+
+    property_ref& operator=(property_ref&& other)
+    {
+        property_ = other.property_;
+        moved_connection_ = connect_moved();
+        other.moved_connection_.disconnect();
+        return *this;
+    }
+
+    operator const T&() const { return *property_; }
+
+private:
+    connection connect_moved()
+    {
+        return property_->moved().connect(
+            [this](property<T>& p) { on_moved(p); });
+    }
+
+    void on_moved(property<T>& prop) { property_ = &prop; }
+
+private:
+    property<T>* property_;
+    scoped_connection moved_connection_;
 };
 
 } // namespace circle

@@ -71,7 +71,7 @@ struct test_provider final : circle::value_provider<int>
     circle::signal<> updated_;
     int value_{};
     signal<>& updated() override { return updated_; }
-    const int& get() override { return value_; }
+    int get() override { return value_; }
 
     test_provider(int initial_value) : value_{initial_value} {};
 
@@ -134,5 +134,45 @@ TEST_CASE("property with value_provider")
         REQUIRE(change_called == true);
         REQUIRE(new_value == 5);
         REQUIRE(p == 5);
+    }
+}
+
+TEST_CASE("property_ref")
+{
+    property<int> p1 = 5;
+    property_ref ref = p1;
+    REQUIRE(ref == 5);
+
+    SECTION("simple")
+    {
+        p1 = 10;
+        REQUIRE(ref == 10);
+        auto p2 = std::move(p1);
+        p2 = 15;
+        REQUIRE(ref == 15);
+        property<int> p3 = 5;
+        REQUIRE(ref == 15);
+        p3 = std::move(p2);
+        REQUIRE(ref == 15);
+        p3 = 20;
+        REQUIRE(ref == 20);
+    }
+
+    SECTION("copy")
+    {
+        property_ref ref2 = ref;
+        p1=10;
+        REQUIRE(ref == 10);
+        REQUIRE(ref2 == 10);
+    }
+
+    SECTION("move")
+    {
+        property<int> p2 = 100;
+        property_ref ref2 = p2;
+        ref2 = std::move(ref);
+        p1=10;
+        p2 = 200;
+        REQUIRE(ref2 == 10);
     }
 }
