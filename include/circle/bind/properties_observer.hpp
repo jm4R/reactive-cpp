@@ -50,4 +50,33 @@ private:
 template <typename... Args>
 properties_observer(Args&...) -> properties_observer<Args...>;
 
+template <typename T>
+class property_proxy
+{
+public:
+    property_proxy(property<T>& prop)
+        : property_{&prop}, moved_connection_{connect_moved(prop)}
+    {
+    }
+
+    property_proxy(const property_proxy&) = delete;
+    property_proxy& operator=(const property_proxy&) = delete;
+    property_proxy(property_proxy&& other) = delete;
+    property_proxy& operator=(property_proxy&&) = delete;
+
+    operator const T&() const { return *property_; }
+
+private:
+    connection connect_moved(property<T>& p)
+    {
+        return p.moved().connect([this](property<T>& p) { on_moved(p); });
+    }
+
+    void on_moved(property<T>& prop) { property_ = &prop; }
+
+private:
+    property<T>* property_;
+    scoped_connection moved_connection_;
+};
+
 } // namespace circle

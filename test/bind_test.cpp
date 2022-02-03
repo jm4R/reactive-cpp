@@ -6,5 +6,4 @@ using namespace circle;
 
 TEST_CASE("bind")
 {
-
 }

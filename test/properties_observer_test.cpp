@@ -40,3 +40,21 @@ TEST_CASE("properties_observer")
     REQUIRE(called);
 
 }
+
+TEST_CASE("property_proxy")
+{
+    property<int> p1 = 5;
+    property_proxy proxy = p1;
+    REQUIRE(proxy == 5);
+    p1 = 10;
+    REQUIRE(proxy == 10);
+    auto p2 = std::move(p1);
+    p2 = 15;
+    REQUIRE(proxy == 15);
+    property<int> p3 = 5;
+    REQUIRE(proxy == 15);
+    p3 = std::move(p2);
+    REQUIRE(proxy == 15);
+    p3 = 20;
+    REQUIRE(proxy == 20);
+}
