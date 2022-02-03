@@ -15,8 +15,7 @@ public:
               typename = std::enable_if_t<
                   std::conjunction_v<is_property<LArgs>...>, void>>
     properties_observer(LArgs&... props)
-        : changed_connections_{connect_changed(props)...},
-          moved_connections_{connect_moved(props)...}
+        : changed_connections_{connect_changed(props)...}
     {
     }
 
@@ -34,14 +33,7 @@ private:
     template <typename T>
     connection connect_changed(property<T>& p)
     {
-        // TODO: support move
         return p.value_changed().connect([this]() { on_changed(); });
-    }
-
-    template <typename T>
-    connection connect_moved(property<T>& p)
-    {
-        return p.moved().connect([this](property<T>& p) { on_moved(p); });
     }
 
     void on_changed()
@@ -50,24 +42,9 @@ private:
             callback_();
     }
 
-    template <typename T>
-    void on_moved(property<T>& prop)
-    {
-        for (scoped_connection& c : changed_connections_)
-        {
-            if (prop.value_changed().owns(c.get()))
-            {
-                c.disconnect();
-                c = connect_changed(prop);
-                break;
-            }
-        }
-    }
-
 private:
     std::function<void()> callback_;
     scoped_connection changed_connections_[sizeof...(Props)];
-    scoped_connection moved_connections_[sizeof...(Props)];
 };
 
 template <typename... Args>
