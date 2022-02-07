@@ -45,17 +45,15 @@ TEST_CASE("binding")
 
     SECTION("dynamic type")
     {
-        property<int> max;
-        max = BIND(a, b, std::max(a, b));
-        property<std::string> str;
-        str = BIND(a, b, max, "max(" + std::to_string(a) + ", " + std::to_string(b) + ") = " + std::to_string(max));
+        property max = BIND(a, b, std::max(a, b));
+        property str =
+            BIND(a, b, max,
+                 "max(" + std::to_string(a) + ", " + std::to_string(b) +
+                     ") = " + std::to_string(max));
 
         a = 60;
         b = 75;
 
         REQUIRE(str.get() == std::string{"max(60, 75) = 75"});
-
-        //TODO:
-        //property p = BIND(...)
     }
 }

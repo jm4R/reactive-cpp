@@ -284,15 +284,6 @@ public:
         connections_->invoke(std::forward<LArgs>(largs)...);
     }
 
-    template <typename T, typename R>
-    connection connect_mem(R (T::*memfun)(Args...), T* obj)
-    {
-        slot_type s = [memfun, obj](Args... args) {
-            detail::invoke(memfun, obj, args...);
-        };
-        return connect_fun(std::move(s));
-    }
-
     connection connect(slot_type f) { return connect_fun(std::move(f)); }
 
     template <typename F, typename... LArgs>

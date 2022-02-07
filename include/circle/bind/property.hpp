@@ -23,9 +23,10 @@ template <typename T>
 class property
 {
 public:
-    property() : value_{} {}
+    property() = default;
 
     property(T value) : value_{std::move(value)} {}
+    property(value_provider_ptr<T> provider) { assign(std::move(provider)); }
 
     property(const property&) = delete;
     property& operator=(const property&) = delete;
@@ -143,7 +144,7 @@ private:
     }
 
 private:
-    T value_;
+    T value_{};
     mutable value_provider_ptr<T> provider_;
     mutable bool dirty_{};
     scoped_connection provider_observer_;

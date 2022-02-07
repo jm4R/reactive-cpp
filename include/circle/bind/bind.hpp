@@ -43,7 +43,7 @@ using binding_ptr = std::unique_ptr<binding<T, Args...>>;
 
 template <typename T, typename... Args>
 inline auto make_binding(T (*f)(const Args&...), property<Args>&... props)
-    -> binding_ptr<T, Args...>
+    -> value_provider_ptr<T>
 {
     return std::make_unique<binding<T, Args...>>(props..., f);
 }
