@@ -1,7 +1,7 @@
 #pragma once
 
-#include <circle/bind/signal.hpp>
-#include <circle/bind/utils.hpp>
+#include <circle/reactive/signal.hpp>
+#include <circle/reactive/utils.hpp>
 
 #include <memory>
 
@@ -117,6 +117,11 @@ public:
     {
         materialize();
         return value_;
+    }
+
+    const T& operator*() const
+    {
+        return get();
     }
 
     operator const T&() const

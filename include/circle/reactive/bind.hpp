@@ -1,7 +1,7 @@
 #pragma once
 
-#include <circle/bind/properties_observer.hpp>
-#include <circle/bind/property.hpp>
+#include <circle/reactive/properties_observer.hpp>
+#include <circle/reactive/property.hpp>
 
 #include <memory>
 #include <tuple>

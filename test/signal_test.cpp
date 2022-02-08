@@ -1,4 +1,4 @@
-#include <circle/bind/signal.hpp>
+#include <circle/reactive/signal.hpp>
 
 #include <catch2/catch.hpp>
 

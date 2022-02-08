@@ -1,17 +1,17 @@
-add_library(circle-bind INTERFACE
-    ${circle-bind_SOURCE_DIR}/include/circle/bind/bind.hpp
-    ${circle-bind_SOURCE_DIR}/include/circle/bind/properties_observer.hpp
-    ${circle-bind_SOURCE_DIR}/include/circle/bind/property.hpp
-    ${circle-bind_SOURCE_DIR}/include/circle/bind/signal.hpp
-    ${circle-bind_SOURCE_DIR}/include/circle/bind/utils.hpp
+add_library(circle-reactive INTERFACE
+    ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/bind.hpp
+    ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/properties_observer.hpp
+    ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/property.hpp
+    ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/signal.hpp
+    ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/utils.hpp
 )
 
-target_include_directories(circle-bind INTERFACE
-    ${circle-bind_SOURCE_DIR}/include
+target_include_directories(circle-reactive INTERFACE
+    ${reactive-cpp_SOURCE_DIR}/include
 )
 
-target_compile_features(circle-bind INTERFACE
+target_compile_features(circle-reactive INTERFACE
     cxx_std_17
 )
 
-add_library(circle::bind ALIAS circle-bind)
+add_library(circle::reactive ALIAS circle-reactive)

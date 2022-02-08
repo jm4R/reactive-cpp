@@ -1,6 +1,6 @@
 #pragma once
 
-#include <circle/bind/property.hpp>
+#include <circle/reactive/property.hpp>
 
 #include <functional>
 #include <type_traits>

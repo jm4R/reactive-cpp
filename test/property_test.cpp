@@ -1,4 +1,4 @@
-#include <circle/bind/property.hpp>
+#include <circle/reactive/property.hpp>
 
 #include <catch2/catch.hpp>
 

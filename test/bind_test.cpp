@@ -1,4 +1,4 @@
-#include <circle/bind/bind.hpp>
+#include <circle/reactive/bind.hpp>
 
 #include <catch2/catch.hpp>
 
@@ -54,6 +54,6 @@ TEST_CASE("binding")
         a = 60;
         b = 75;
 
-        REQUIRE(str.get() == std::string{"max(60, 75) = 75"});
+        REQUIRE(*str == std::string{"max(60, 75) = 75"});
     }
 }
