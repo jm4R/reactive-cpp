@@ -10,7 +10,7 @@ TEST_CASE("signal")
 {
     SECTION("empty")
     {
-        circle::signal<int> s;
+        signal<int> s;
         s.emit(5);
     }
 
@@ -18,7 +18,7 @@ TEST_CASE("signal")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect([&](int v){ res = v; });
         REQUIRE(res == 0);
         s.emit(5);
@@ -29,7 +29,7 @@ TEST_CASE("signal")
     {
         global_int = 0;
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect(+[](int v){ global_int = v; });
         REQUIRE(global_int == 0);
         s.emit(5);
@@ -44,7 +44,7 @@ TEST_CASE("signal")
             int res{};
         } obj;
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect(&lstr::foo, &obj);
         REQUIRE(obj.res == 0);
         s.emit(5);
@@ -59,7 +59,7 @@ TEST_CASE("signal")
             mutable int res{};
         } obj;
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect(&lstr::foo, &obj);
         REQUIRE(obj.res == 0);
         s.emit(5);
@@ -82,7 +82,7 @@ TEST_CASE("signal")
 
         global_int = 0;
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect(obj);
         REQUIRE(obj.res == 0);
         REQUIRE(global_int == 0);
@@ -107,7 +107,7 @@ TEST_CASE("signal")
 
         global_int = 0;
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect(obj);
         REQUIRE(obj.res == 0);
         REQUIRE(global_int == 0);
@@ -120,7 +120,7 @@ TEST_CASE("signal")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect([&](int v){ res = v; });
         REQUIRE(res == 0);
         s.emit(5);
@@ -144,7 +144,7 @@ TEST_CASE("signal")
     {
         int res{};
 
-        circle::signal<int, char> s;
+        signal<int, char> s;
         s.connect([&](int v){ res = v; });
         REQUIRE(res == 0);
         s.emit(5, 'a');
@@ -155,7 +155,7 @@ TEST_CASE("signal")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         int a = 1000;
         s.connect([&](int a, int b, int v) { res = a + b + v; }, a, 100);
         REQUIRE(res == 0);
@@ -176,7 +176,7 @@ TEST_CASE("signal")
         } obj;
 
         global_int = 0;
-        circle::signal<int> s;
+        signal<int> s;
 
         SECTION("exact match")
         {
@@ -214,7 +214,7 @@ TEST_CASE("signal")
 
         global_int = 0;
 
-        circle::signal<int> s;
+        signal<int> s;
         s.connect(static_cast<void (lstr::*)(int)>(&lstr::foo), &obj);
         REQUIRE(global_int == 0);
         s.emit(5);
@@ -225,7 +225,7 @@ TEST_CASE("signal")
     {
         int res{};
 
-        circle::signal<int> s1;
+        signal<int> s1;
         s1.connect([&](int v){ res = v; });
         auto s2 = std::move(s1);
         s2.emit(5);
@@ -236,9 +236,9 @@ TEST_CASE("signal")
     {
         int res{};
 
-        circle::signal<int> s1;
+        signal<int> s1;
         s1.connect([&](int v){ res = v; });
-        circle::signal<int> s2;
+        signal<int> s2;
         s2 = std::move(s1);
         s2.emit(5);
         REQUIRE(res == 5);
@@ -251,7 +251,7 @@ TEST_CASE("connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         connection c = s.connect([&](int v){ res = v; });
         s.emit(5);
         c.disconnect();
@@ -263,7 +263,7 @@ TEST_CASE("connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         connection c = s.connect([&](int v){ res = v; });
         s.emit(5);
         auto c2 = c;
@@ -276,7 +276,7 @@ TEST_CASE("connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         connection c = s.connect([&](int v){ res = v; });
         s.emit(5);
         auto c2 = std::move(c);
@@ -289,14 +289,93 @@ TEST_CASE("connection")
     {
         int res{};
 
-        circle::signal<int> s1;
-        circle::signal<float> s2;
+        signal<int> s1;
+        signal<float> s2;
         connection c1 = s1.connect([](){});
         connection c2 = s2.connect([](){});
         REQUIRE(c1.belongs_to(s1));
         REQUIRE(c2.belongs_to(s2));
         REQUIRE_FALSE(c1.belongs_to(s2));
         REQUIRE_FALSE(c2.belongs_to(s1));
+    }
+
+    SECTION("disconnect invoked during iteration")
+    {
+        int res1{};
+        int res2{};
+        int res3{};
+
+        signal<> s;
+        connection c1 = s.connect([&] { res1++; });
+        connection c2 = s.connect([&] { res2++; });
+        connection c3 = s.connect([&] {
+            res3++;
+            c2.disconnect();
+        });
+
+        s();
+        REQUIRE(res1 == 1);
+        REQUIRE(res2 == 1);
+        REQUIRE(res3 == 1);
+
+        s();
+        REQUIRE(res1 == 2);
+        REQUIRE(res2 == 1);
+        REQUIRE(res3 == 2);
+    }
+
+    SECTION("disconnect not-invoked during iteration")
+    {
+        int res1{};
+        int res2{};
+        int res3{};
+
+        connection* c2ptr{};
+        signal<> s;
+        connection c1 = s.connect([&] {
+            res1++;
+            c2ptr->disconnect();
+        });
+        connection c2 = s.connect([&] { res2++; });
+        connection c3 = s.connect([&] { res3++; });
+        c2ptr = &c2;
+
+        s();
+        REQUIRE(res1 == 1);
+        REQUIRE(res2 == 0);
+        REQUIRE(res3 == 1);
+
+        s();
+        REQUIRE(res1 == 2);
+        REQUIRE(res2 == 0);
+        REQUIRE(res3 == 2);
+    }
+
+    SECTION("self-disconnect during iteration")
+    {
+        int res1{};
+        int res2{};
+        int res3{};
+
+        connection* c2ptr{};
+        signal<> s;
+        connection c1 = s.connect([&] { res1++; });
+        connection c2 = s.connect([&] {
+            c2ptr->disconnect();
+            res2++;
+        });
+        connection c3 = s.connect([&] { res3++; });
+        c2ptr = &c2;
+
+        s();
+        REQUIRE(res1 == 1);
+        REQUIRE(res2 == 1);
+        REQUIRE(res3 == 1);
+
+        s();
+        REQUIRE(res1 == 2);
+        REQUIRE(res2 == 1);
+        REQUIRE(res3 == 2);
     }
 }
 
@@ -306,7 +385,7 @@ TEST_CASE("scoped_connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         {
             scoped_connection c = s.connect([&](int v){ res = v; });
             s.emit(5);
@@ -319,7 +398,7 @@ TEST_CASE("scoped_connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         scoped_connection c = s.connect([&](int v){ res = v; });
         s.emit(5);
         c.release();
@@ -331,7 +410,7 @@ TEST_CASE("scoped_connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         scoped_connection c = s.connect([&](int v){ res = v; });
         s.emit(5);
         c.disconnect();
@@ -343,7 +422,7 @@ TEST_CASE("scoped_connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         scoped_connection c = s.connect([&](int v) { res += v; });
         c = s.connect([&](int v) { res += v * 100; });
         s.emit(5);
@@ -354,7 +433,7 @@ TEST_CASE("scoped_connection")
     {
         int res{};
 
-        circle::signal<int> s;
+        signal<int> s;
         scoped_connection c = s.connect([&](int v) { res += v; });
         c = scoped_connection{};
         s.emit(5);

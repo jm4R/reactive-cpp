@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -50,6 +51,15 @@ constexpr T fail(T val, const char* reason)
     // throw std::exception(reason);
     return val;
 }
+
+struct increment_guard
+{
+    increment_guard(unsigned& val) : val_{val} { ++val_; }
+    ~increment_guard() { --val_; }
+
+private:
+    unsigned& val_;
+};
 
 enum class id : unsigned
 {
@@ -107,11 +117,14 @@ public:
     template <typename... LArgs>
     void invoke(LArgs&&... largs)
     {
+        increment_guard depth_guard{iterations_depth_};
         for (auto c : connections_)
         {
             if (c.slot && !c.blocked)
                 c.slot(std::forward<LArgs>(largs)...);
         }
+        if (iterations_depth_ == 1)
+            post_invoke();
     }
 
     id connect(slot_type s)
@@ -168,8 +181,21 @@ public:
     }
 
 private:
+    void post_invoke()
+    {
+        const auto is_inactive = [](const connection_data& c) {
+            return !c.slot;
+        };
+        connections_.erase(std::remove_if(connections_.begin(),
+                                          connections_.end(), is_inactive),
+                           connections_.end());
+    }
+
+private:
     detail::id next_id_{1};
     std::vector<connection_data> connections_;
+
+    unsigned iterations_depth_{};
 };
 
 } // namespace detail
