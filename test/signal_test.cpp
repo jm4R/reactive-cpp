@@ -287,8 +287,6 @@ TEST_CASE("connection")
 
     SECTION("belongs_to")
     {
-        int res{};
-
         signal<int> s1;
         signal<float> s2;
         connection c1 = s1.connect([](){});

@@ -49,7 +49,7 @@ TEST_CASE("property")
     {
         circle::property<int> p{};
         circle::property<int>* addr = &p;
-        p.moved().connect([&](property<int>& p) { addr = &p; });
+        p.moved().connect([&](property<int>& pl) { addr = &pl; });
 
         SECTION("moved by move constructor")
         {

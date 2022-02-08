@@ -22,7 +22,7 @@ TEST_CASE("properties_observer")
     property<int> a = 1;
     property<long> b = 1;
     properties_observer obs{a, b};
-    int c = a * b;
+    long c = a * b;
     obs.set_callback([&] { c = a * b; });
     REQUIRE(c == 1);
     a = 2;
@@ -46,7 +46,7 @@ TEST_CASE("almost binding")
     property<int> a = 1;
     property<long> b = 1;
     properties_observer obs{a, b};
-    int c = a * b;
+    long c = a * b;
     obs.set_callback(
         [&c, a = property_ref{a}, b = property_ref{b}] { c = a * b; });
     REQUIRE(c == 1);

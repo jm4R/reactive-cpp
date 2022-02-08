@@ -48,6 +48,7 @@ constexpr void invoke(F&& f, Args&&... args)
 template <typename T>
 constexpr T fail(T val, const char* reason)
 {
+    (void) reason;
     // throw std::exception(reason);
     return val;
 }
@@ -78,7 +79,7 @@ protected:
 };
 
 template <typename... Args>
-class connections_container : public connections_container_base
+class connections_container final : public connections_container_base
 {
     using slot_type = std::function<void(Args...)>;
     struct connection_data
