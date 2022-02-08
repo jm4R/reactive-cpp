@@ -1,4 +1,8 @@
 CPMAddPackage("gh:catchorg/Catch2@2.13.8")
+list(APPEND CMAKE_MODULE_PATH "${Catch2_SOURCE_DIR}/contrib")
+
+enable_testing()
+include(Catch)
 
 add_executable(circle-reactive-test
     bind_test.cpp
@@ -14,3 +18,4 @@ target_link_libraries(circle-reactive-test PRIVATE
     Catch2::Catch2
 )
 
+catch_discover_tests(circle-reactive-test)
