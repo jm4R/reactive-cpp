@@ -92,12 +92,18 @@ class connections_container final : public connections_container_base
 
     const connection_data* find_impl(id connection_id) const
     {
-        const auto it = std::lower_bound(
-            connections_.begin(), connections_.end(), connection_id,
-            [](auto l, auto v) { return l.id < v; });
-        return (it != connections_.end() && it->id == connection_id)
-                   ? &(*it)
-                   : static_cast<connection_data*>(nullptr);
+        auto find_in = [&](const std::vector<connection_data>& v) {
+            auto it = std::lower_bound(v.begin(), v.end(), connection_id,
+                                       [](auto l, auto v) { return l.id < v; });
+            return (it != v.end() && it->id == connection_id)
+                       ? &(*it)
+                       : static_cast<connection_data*>(nullptr);
+        };
+
+        if (auto found = find_in(connections_))
+            return found;
+
+        return find_in(new_connections_);
     }
 
     const connection_data* find(id id) const { return find_impl(id); }
@@ -120,7 +126,7 @@ public:
     void invoke(LArgs&&... largs)
     {
         increment_guard depth_guard{iterations_depth_};
-        for (auto c : connections_)
+        for (auto& c : connections_)
         {
             if (c.slot && !c.blocked)
                 c.slot(std::forward<LArgs>(largs)...);
@@ -132,31 +138,36 @@ public:
     id connect(slot_type s)
     {
         const auto id = next_id();
-        connections_.push_back(connection_data{id, std::move(s)});
+        if (!iterations_depth_)
+            connections_.push_back(connection_data{id, std::move(s)});
+        else
+            new_connections_.push_back(connection_data{id, std::move(s)});
         return id;
     }
 
     void disconnect_all()
     {
         connections_ = {};
-        next_id_ = id{1};
+        new_connections_ = {};
     }
 
     void disconnect(id connection_id) override
     {
-        if (iterations_depth_)
+        if (!iterations_depth_)
         {
-            if (auto c = find(connection_id))
-            {
-                c->slot = {};
-            }
-        } else {
             const auto it = std::lower_bound(
                 connections_.begin(), connections_.end(), connection_id,
                 [](auto l, auto v) { return l.id < v; });
 
             if ((it != connections_.end() && it->id == connection_id))
                 connections_.erase(it);
+        }
+        else
+        {
+            if (auto c = find(connection_id))
+            {
+                c->slot = {};
+            }
         }
     }
 
@@ -201,11 +212,16 @@ private:
         connections_.erase(std::remove_if(connections_.begin(),
                                           connections_.end(), is_inactive),
                            connections_.end());
+        connections_.insert(connections_.end(),
+                            std::move_iterator{new_connections_.begin()},
+                            std::move_iterator{new_connections_.end()});
+        new_connections_.resize(0);
     }
 
 private:
     detail::id next_id_{1};
     std::vector<connection_data> connections_;
+    std::vector<connection_data> new_connections_;
 
     unsigned iterations_depth_{};
 };

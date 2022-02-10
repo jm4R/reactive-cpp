@@ -243,6 +243,60 @@ TEST_CASE("signal")
         s2.emit(5);
         REQUIRE(res == 5);
     }
+
+    SECTION("connect during iteration")
+    {
+        signal<> s;
+
+        int external_called = 0;
+        int internal_called = 0;
+
+        auto internal = [&] {
+            ++internal_called;
+        };
+
+        s.connect([&] {
+            if (!external_called)
+            {
+                s.connect(internal);
+            }
+            ++external_called;
+        });
+
+        s.emit();
+        REQUIRE(external_called == 1);
+        REQUIRE(internal_called == 0);
+
+        s.emit();
+        REQUIRE(external_called == 2);
+        REQUIRE(internal_called == 1);
+    }
+
+    SECTION("connect during iteration with vector reallocation")
+    {
+        signal<> s;
+
+        int external_called = 0;
+        int internal_called = 0;
+
+        auto internal = [&] {
+            ++internal_called;
+        };
+
+        s.connect([&] {
+            s.connect(internal);
+            ++external_called;
+        });
+
+        for (int i=0; i<100; ++i)
+        {
+            internal_called = 0;
+            external_called = 0;
+            s.emit();
+            REQUIRE(external_called == 1);
+            CHECK(internal_called == i);
+        }
+    }
 }
 
 TEST_CASE("connection")
@@ -408,6 +462,35 @@ TEST_CASE("connection")
         REQUIRE(res1 == 2);
         REQUIRE(res2 == 1);
         REQUIRE(res3 == 2);
+    }
+
+    SECTION("connect & disconnect during iteration")
+    {
+        signal<> s;
+
+        int external_called = 0;
+        int internal_called = 0;
+
+        auto internal = [&] {
+            ++internal_called;
+        };
+
+        s.connect([&] {
+            if (!external_called)
+            {
+                connection c = s.connect(internal);
+                c.disconnect();
+            }
+            ++external_called;
+        });
+
+        s.emit();
+        REQUIRE(external_called == 1);
+        REQUIRE(internal_called == 0);
+
+        s.emit();
+        REQUIRE(external_called == 2);
+        REQUIRE(internal_called == 0);
     }
 }
 
