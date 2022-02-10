@@ -29,7 +29,11 @@ TEST_CASE("property")
     {
         circle::property<int> p{};
         int new_value = 0;
-        p.value_changed().connect([&](int val) { new_value = val; });
+        bool changed = false;
+        p.value_changed().connect([&](int val) {
+            changed = true;
+            new_value = val;
+        });
 
         SECTION("changed by operator=")
         {
@@ -42,6 +46,13 @@ TEST_CASE("property")
             circle::property<int> p2 = std::move(p);
             p2 = 5;
             REQUIRE(new_value == 5);
+        }
+
+        SECTION("after assign equal value")
+        {
+            p = 0;
+            REQUIRE_FALSE(changed);
+            REQUIRE(new_value == 0);
         }
     }
 
@@ -133,6 +144,13 @@ TEST_CASE("property with value_provider")
         provider->updated_.emit();
         REQUIRE(change_called == true);
         REQUIRE(new_value == 5);
+        REQUIRE(p == 5);
+    }
+
+    SECTION("detach leaves value up-to-date")
+    {
+        p = test_provider::make(5);
+        p.detach();
         REQUIRE(p == 5);
     }
 }

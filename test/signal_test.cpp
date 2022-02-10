@@ -247,6 +247,12 @@ TEST_CASE("signal")
 
 TEST_CASE("connection")
 {
+    SECTION("empty")
+    {
+        connection c;
+        REQUIRE_FALSE(c.active());
+    }
+
     SECTION("simple")
     {
         int res{};
@@ -295,6 +301,34 @@ TEST_CASE("connection")
         REQUIRE(c2.belongs_to(s2));
         REQUIRE_FALSE(c1.belongs_to(s2));
         REQUIRE_FALSE(c2.belongs_to(s1));
+    }
+
+    SECTION("active")
+    {
+        signal<int> s1;
+        signal<float> s2;
+        connection c1 = s1.connect([](){});
+        connection c2 = s2.connect([](){});
+        REQUIRE(c1.active());
+        REQUIRE(c2.active());
+        c1.block(true);
+        c2.disconnect();
+        REQUIRE(c1.active());
+        REQUIRE_FALSE(c2.active());
+    }
+
+    SECTION("blocked")
+    {
+        signal<int> s1;
+        signal<float> s2;
+        connection c1 = s1.connect([](){});
+        connection c2 = s2.connect([](){});
+        REQUIRE(c1.active());
+        REQUIRE(c2.active());
+        c1.block(true);
+        c2.disconnect();
+        REQUIRE(c1.blocked());
+        // REQUIRE_FALSE(c2.blocked());
     }
 
     SECTION("disconnect invoked during iteration")
@@ -437,4 +471,23 @@ TEST_CASE("scoped_connection")
         s.emit(5);
         REQUIRE(res == 0);
     }
+}
+
+TEST_CASE("bad usage")
+{
+    signal<int> s;
+    connection c;
+    REQUIRE_FALSE(c.block(true));
+    REQUIRE_FALSE(c.blocked());
+
+    c = s.connect([&]{
+        c.disconnect();
+        REQUIRE_FALSE(c.block(true));
+        REQUIRE_FALSE(c.blocked());
+    });
+
+    s.emit(5);
+
+    REQUIRE_FALSE(c.block(true));
+    REQUIRE_FALSE(c.blocked());
 }

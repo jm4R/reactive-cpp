@@ -90,12 +90,12 @@ class connections_container final : public connections_container_base
         bool blocked{};
     };
 
-    const connection_data* find_impl(id id) const
+    const connection_data* find_impl(id connection_id) const
     {
-        const auto it =
-            std::lower_bound(connections_.begin(), connections_.end(), id,
-                             [](auto l, auto v) { return l.id < v; });
-        return (it != connections_.end() && it->id == id)
+        const auto it = std::lower_bound(
+            connections_.begin(), connections_.end(), connection_id,
+            [](auto l, auto v) { return l.id < v; });
+        return (it != connections_.end() && it->id == connection_id)
                    ? &(*it)
                    : static_cast<connection_data*>(nullptr);
     }
@@ -144,9 +144,19 @@ public:
 
     void disconnect(id connection_id) override
     {
-        if (auto c = find(connection_id))
+        if (iterations_depth_)
         {
-            c->slot = {};
+            if (auto c = find(connection_id))
+            {
+                c->slot = {};
+            }
+        } else {
+            const auto it = std::lower_bound(
+                connections_.begin(), connections_.end(), connection_id,
+                [](auto l, auto v) { return l.id < v; });
+
+            if ((it != connections_.end() && it->id == connection_id))
+                connections_.erase(it);
         }
     }
 
@@ -306,10 +316,7 @@ public:
     template <typename... LArgs>
     void operator()(LArgs&&... largs) const
     {
-        if (!connections_)
-            return;
-
-        connections_->invoke(std::forward<LArgs>(largs)...);
+        emit(std::forward<LArgs>(largs)...);
     }
 
     connection connect(slot_type f) { return connect_fun(std::move(f)); }

@@ -19,3 +19,10 @@ target_link_libraries(circle-reactive-test PRIVATE
 )
 
 catch_discover_tests(circle-reactive-test)
+
+if (REACTIVE_CPP_COVERAGE)
+    add_gcovr_target_html(circle-reactive-coverage
+        TEST_TARGET circle-reactive-test
+        SOURCE_DIR ${PROJECT_SOURCE_DIR}/include
+    )
+endif()
