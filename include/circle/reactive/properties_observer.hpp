@@ -44,10 +44,14 @@ private:
 
 private:
     std::function<void()> callback_;
+    // be aware: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80438
+    static_assert(sizeof...(Props) != 0,
+                  "Can't create empty property observer");
     scoped_connection changed_connections_[sizeof...(Props)];
 };
 
 template <typename... Args>
-properties_observer(Args&...) -> properties_observer<Args...>;
+properties_observer(property<Args>&...)
+    -> properties_observer<property<Args>...>;
 
 } // namespace circle
