@@ -43,6 +43,19 @@ TEST_CASE("binding")
         REQUIRE(c1 == 200);
     }
 
+    SECTION("bind to deleted property")
+    {
+        property<int> a = 5;
+        property<int> c;
+        {
+            property<int> b = 10;
+            c = BIND(a, b, a * b);
+        }
+        REQUIRE(c == 50);
+        a = 100;
+        REQUIRE(c == 50);
+    }
+
     SECTION("dynamic type")
     {
         property max = BIND(a, b, std::max(a, b));

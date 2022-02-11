@@ -3,6 +3,7 @@
 #include <circle/reactive/signal.hpp>
 #include <circle/reactive/utils.hpp>
 
+#include <functional>
 #include <memory>
 
 namespace circle {
@@ -12,7 +13,8 @@ class value_provider
 {
 public:
     virtual ~value_provider() {}
-    virtual signal<>& updated() = 0;
+    virtual void set_updated_callback(std::function<void()> clb) = 0;
+    virtual void set_before_invalid_callback(std::function<void()> clb) = 0;
     virtual T get() = 0;
 };
 
@@ -30,6 +32,11 @@ public:
 
     property(const property&) = delete;
     property& operator=(const property&) = delete;
+
+    ~property()
+    {
+        before_destroyed_.emit(*this);
+    }
 
     property(property&& other)
         : value_{std::move(other.value_)},
@@ -87,10 +94,11 @@ public:
         if (provider)
         {
             provider_ = std::move(provider);
-            provider_observer_ = provider_->updated().connect([this] {
+            provider_->set_updated_callback([this] {
                 dirty_ = true;
                 value_changed_.emit(*this);
             });
+            provider_->set_before_invalid_callback([this] { detach(); });
             dirty_ = true;
             if (materialize())
             {
@@ -131,6 +139,7 @@ public:
 
     signal<property&>& value_changed() { return value_changed_; }
     signal<property&>& moved() { return moved_; }
+    signal<property&>& before_destroyed() { return before_destroyed_; }
 
 private:
     bool materialize() const
@@ -155,6 +164,7 @@ private:
     scoped_connection provider_observer_;
     signal<property&> value_changed_;
     signal<property&> moved_;
+    signal<property&> before_destroyed_;
 };
 
 template <typename T>

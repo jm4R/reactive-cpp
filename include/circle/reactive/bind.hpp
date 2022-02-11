@@ -15,7 +15,8 @@ public:
     binding(property<Args>&... props, T (*f)(const Args&...))
         : arguments_{props...}, function_{f}, observer_{props...}
     {
-        observer_.set_callback([this] { updated_.emit(); });
+        observer_.set_callback([this] { updated_(); });
+        observer_.set_destroyed_callback([this] { before_invalid_(); });
     }
 
     ~binding() override = default;
@@ -27,7 +28,14 @@ public:
     binding& operator=(const binding&) = delete;
 
 public:
-    signal<>& updated() override { return updated_; }
+    void set_updated_callback(std::function<void()> clb) override
+    {
+        updated_ = std::move(clb);
+    }
+    void set_before_invalid_callback(std::function<void()> clb) override
+    {
+        before_invalid_ = std::move(clb);
+    }
     T get() override { return std::apply(function_, arguments_); }
 
 private:
@@ -35,7 +43,8 @@ private:
     std::tuple<property_ref<Args>...> arguments_;
     function_t function_;
     properties_observer<property<Args>...> observer_;
-    signal<> updated_;
+    std::function<void()> updated_;
+    std::function<void()> before_invalid_;
 };
 
 template <typename T, typename... Args>

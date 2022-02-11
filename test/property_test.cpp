@@ -79,10 +79,24 @@ TEST_CASE("property")
 
 struct test_provider final : circle::value_provider<int>
 {
-    circle::signal<> updated_;
+    std::function<void()> updated_;
+    std::function<void()> before_invalid_;
     int value_{};
-    signal<>& updated() override { return updated_; }
-    int get() override { return value_; }
+    bool is_invalid_{};
+    void set_updated_callback(std::function<void()> clb) override
+    {
+        updated_ = std::move(clb);
+    }
+    void set_before_invalid_callback(std::function<void()> clb) override
+    {
+        before_invalid_ = std::move(clb);
+    }
+    int get() override
+    {
+        if (is_invalid_)
+            throw "You can't do this now!";
+        return value_;
+    }
 
     test_provider(int initial_value) : value_{initial_value} {};
 
@@ -101,7 +115,7 @@ TEST_CASE("property with value_provider")
     circle::property<int> p;
     int new_value = 0;
     bool change_called = false;
-    p.value_changed().connect([&](int val) {
+    auto c = p.value_changed().connect([&](int val) {
         new_value = val;
         change_called = true;
     });
@@ -113,7 +127,7 @@ TEST_CASE("property with value_provider")
         REQUIRE(change_called == false);
         REQUIRE(p == 0);
         provider->value_ = 5;
-        provider->updated_.emit();
+        provider->updated_();
         REQUIRE(change_called == true);
         REQUIRE(new_value == 5);
         REQUIRE(p == 5);
@@ -127,7 +141,7 @@ TEST_CASE("property with value_provider")
         REQUIRE(new_value == 5);
         REQUIRE(p == 5);
         provider->value_ = 15;
-        provider->updated_.emit();
+        provider->updated_();
         REQUIRE(new_value == 15);
         REQUIRE(p == 15);
     }
@@ -141,14 +155,49 @@ TEST_CASE("property with value_provider")
         REQUIRE(p == 5);
 
         change_called = false;
-        provider->updated_.emit();
+        provider->updated_();
         REQUIRE(change_called == true);
         REQUIRE(new_value == 5);
         REQUIRE(p == 5);
     }
 
+    SECTION("invalidate leaves value up-to-date")
+    {
+        c.disconnect();
+        {
+            p = test_provider::make(5);
+            auto* provider = test_provider::instance;
+            provider->value_ = 15;
+            provider->updated_();
+            provider->before_invalid_();
+            // freed:
+            // provider->value_ = 30;
+            // provider->is_invalid_ = true;
+        }
+        REQUIRE(p == 15);
+    }
+
+    SECTION("working with moved property")
+    {
+        c.disconnect();
+        property<int> p2;
+        {
+            p = test_provider::make(5);
+            p2 = std::move(p);
+            auto* provider = test_provider::instance;
+            provider->value_ = 15;
+            provider->updated_();
+            provider->before_invalid_();
+            // freed:
+            // provider->value_ = 30;
+            // provider->is_invalid_ = true;
+        }
+        REQUIRE(p2 == 15);
+    }
+
     SECTION("detach leaves value up-to-date")
     {
+        c.disconnect();
         p = test_provider::make(5);
         p.detach();
         REQUIRE(p == 5);
