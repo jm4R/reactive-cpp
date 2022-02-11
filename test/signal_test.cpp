@@ -297,6 +297,20 @@ TEST_CASE("signal")
             CHECK(internal_called == i);
         }
     }
+
+    SECTION("emitting with r-value should call all slots with a copy")
+    {
+        signal<std::string> s;
+        std::string res1;
+        std::string res2;
+
+        s.connect([&](std::string v) { res1 = std::move(v); } );
+        s.connect([&](std::string v) { res2 = std::move(v); } );
+        s.emit(std::string{"easter"});
+
+        REQUIRE(res1 == "easter");
+        REQUIRE(res2 == "easter");
+    }
 }
 
 TEST_CASE("connection")
@@ -385,6 +399,19 @@ TEST_CASE("connection")
         // REQUIRE_FALSE(c2.blocked());
     }
 
+    SECTION("conection to deleted signal")
+    {
+        connection c;
+        {
+            signal<> s;
+            c = s.connect([]{});
+            REQUIRE(c.active());
+        }
+        REQUIRE_FALSE(c.active());
+        c.disconnect();
+        REQUIRE_FALSE(c.active());
+    }
+
     SECTION("disconnect invoked during iteration")
     {
         int res1{};
@@ -408,6 +435,46 @@ TEST_CASE("connection")
         REQUIRE(res1 == 2);
         REQUIRE(res2 == 1);
         REQUIRE(res3 == 2);
+    }
+
+    SECTION("disconnectand & emit invoked during iteration")
+    {
+        signal<> s;
+        connection c;
+        int res{};
+
+        c = s.connect([&] {
+            c.disconnect();
+            ++res;
+            s.emit();
+        });
+
+        s.emit();
+        REQUIRE(res == 1);
+        REQUIRE_FALSE(c.active());
+        s.emit();
+        REQUIRE(res == 1);
+    }
+
+    SECTION("disconnectand_all & emit invoked during iteration")
+    {
+        signal<> s;
+        connection c;
+        int res{};
+
+        s.connect([&] { ++res; });
+        c = s.connect([&] {
+            s.disconnect_all();
+            ++res;
+            s.emit();
+        });
+        s.connect([&] { ++res; });
+
+        s.emit();
+        REQUIRE(res == 2);
+        REQUIRE_FALSE(c.active());
+        s.emit();
+        REQUIRE(res == 2);
     }
 
     SECTION("disconnect not-invoked during iteration")

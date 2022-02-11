@@ -87,7 +87,9 @@ class connections_container final : public connections_container_base
     {
         detail::id id;
         slot_type slot;
+        unsigned invoke_depth{};
         bool blocked{};
+        bool lazy_disconnect{};
     };
 
     const connection_data* find_impl(id connection_id) const
@@ -121,15 +123,37 @@ class connections_container final : public connections_container_base
         return detail::id{val};
     }
 
+    static bool active(const connection_data& c)
+    {
+        return !!c.slot && !c.lazy_disconnect;
+    }
+
+    static void disconnect(connection_data& c)
+    {
+        if (!c.invoke_depth)
+        {
+            c.slot = {};
+        }
+        else
+        {
+            c.lazy_disconnect = true;
+        }
+    }
+
 public:
     template <typename... LArgs>
     void invoke(LArgs&&... largs)
     {
-        increment_guard depth_guard{iterations_depth_};
+        increment_guard inv_depth_guard{iterations_depth_};
         for (auto& c : connections_)
         {
-            if (c.slot && !c.blocked)
-                c.slot(std::forward<LArgs>(largs)...);
+            if (active(c) && !c.blocked)
+            {
+                increment_guard conn_depth_guard{c.invoke_depth};
+                c.slot(/*do_not_forward*/ largs...);
+                if (c.lazy_disconnect && c.invoke_depth == 1)
+                    c.slot = {};
+            }
         }
         if (iterations_depth_ == 1)
             post_invoke();
@@ -147,8 +171,16 @@ public:
 
     void disconnect_all()
     {
-        connections_ = {};
-        new_connections_ = {};
+        if (!iterations_depth_)
+        {
+            connections_ = {};
+            new_connections_ = {};
+        } else {
+            for (auto& c : connections_)
+            {
+                disconnect(c);
+            }
+        }
     }
 
     void disconnect(id connection_id) override
@@ -166,7 +198,7 @@ public:
         {
             if (auto c = find(connection_id))
             {
-                c->slot = {};
+                disconnect(*c);
             }
         }
     }
@@ -175,7 +207,7 @@ public:
     {
         if (auto c = find(connection_id))
         {
-            return !!c->slot;
+            return active(*c);
         }
         return false;
     }
@@ -184,7 +216,7 @@ public:
     {
         if (auto c = find(connection_id))
         {
-            if (!c->slot)
+            if (!active(*c))
                 return detail::fail(false, "Blocking inactive connection");
             return std::exchange(c->blocked, val);
         }
@@ -195,7 +227,7 @@ public:
     {
         if (auto c = find(connection_id))
         {
-            if (!c->slot)
+            if (!c->slot || c->lazy_disconnect)
                 return detail::fail(false,
                                     "Checking inactive connection if blocked");
             return c->blocked;
