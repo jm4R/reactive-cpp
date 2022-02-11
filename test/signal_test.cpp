@@ -242,6 +242,9 @@ TEST_CASE("signal")
         s2 = std::move(s1);
         s2.emit(5);
         REQUIRE(res == 5);
+        s2.disconnect_all();
+        s2.emit(10);
+        REQUIRE(res == 5);
     }
 
     SECTION("connect during iteration")
