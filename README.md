@@ -1,5 +1,15 @@
 # reactive-cpp
 
+Branch          | Appveyor |
+:-------------: | -------- |
+[`master`](https://github.com/jm4R/reactive-cpp/tree/master) | [![Build status](https://ci.appveyor.com/api/projects/status/ix6o5njakdpqvbrl/branch/master?svg=true)](https://ci.appveyor.com/project/jm4R/reactive-cpp/branch/master/)
+[`develop`](https://github.com/jm4R/reactive-cpp/tree/develop) | [![Build status](https://ci.appveyor.com/api/projects/status/ix6o5njakdpqvbrl/branch/develop?svg=true)](https://ci.appveyor.com/project/jm4R/reactive-cpp/branch/master/)
+
+
+## Introduction
+
+Property binding library lazy value evaluation.
+
 Library is in development, but here's an already-working demo:
 
 ```cpp
