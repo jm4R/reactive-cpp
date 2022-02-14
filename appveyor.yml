@@ -1,0 +1,38 @@
+version: '{build}'
+
+branches:
+  only:
+  - master
+  - develop
+
+image:
+- Ubuntu2004
+- Visual Studio 2022
+- Visual Studio 2019
+
+matrix:
+  fast_finish: true
+
+init:
+- cmd: |-
+    echo %APPVEYOR_BUILD_WORKER_IMAGE%
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" ( set generator="Visual Studio 16 2019" )
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2022" ( set generator="Visual Studio 17 2022" )
+    echo %generator%
+
+before_build:
+- cmd: |-
+    mkdir build
+    cd build
+    cmake --version
+    cmake -G %generator% -A x64 ..
+- sh: |-
+    mkdir build
+    cd build
+    cmake --version
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+
+build_script:
+- cmd: cmake --build . --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+- sh:  cmake --build .
+

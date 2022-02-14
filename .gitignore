@@ -1,2 +1,9 @@
+# CMake:
 /build
+
+# QtCreator:
 *.user
+
+# Visual Studio:
+/.vs
+/out
