@@ -57,39 +57,45 @@ inline auto make_binding(T (*f)(const Args&...), property<Args>&... props)
     return std::make_unique<binding<T, Args...>>(props..., f);
 }
 
+// workaround for old msvc preprocessor:
+// https://stackoverflow.com/questions/5134523/msvc-doesnt-expand-va-args-correctly
+#define CIRCLE_MSVC_EXP(x) x
+
+// clang-format off
 #define CIRCLE_FO_0(f, last)
 #define CIRCLE_FO_1(f, last, x) last(x)
-#define CIRCLE_FO_2(f, last, x, ...) f(x) CIRCLE_FO_1(f, last, __VA_ARGS__)
-#define CIRCLE_FO_3(f, last, x, ...) f(x), CIRCLE_FO_2(f, last, __VA_ARGS__)
-#define CIRCLE_FO_4(f, last, x, ...) f(x), CIRCLE_FO_3(f, last, __VA_ARGS__)
-#define CIRCLE_FO_5(f, last, x, ...) f(x), CIRCLE_FO_4(f, last, __VA_ARGS__)
-#define CIRCLE_FO_6(f, last, x, ...) f(x), CIRCLE_FO_5(f, last, __VA_ARGS__)
-#define CIRCLE_FO_7(f, last, x, ...) f(x), CIRCLE_FO_6(f, last, __VA_ARGS__)
-#define CIRCLE_FO_8(f, last, x, ...) f(x), CIRCLE_FO_7(f, last, __VA_ARGS__)
-#define CIRCLE_FO_9(f, last, x, ...) f(x), CIRCLE_FO_8(f, last, __VA_ARGS__)
-#define CIRCLE_FO_10(f, last, x, ...) f(x), CIRCLE_FO_9(f, last, __VA_ARGS__)
-#define CIRCLE_FO_11(f, last, x, ...) f(x), CIRCLE_FO_10(f, last, __VA_ARGS__)
-#define CIRCLE_FO_12(f, last, x, ...) f(x), CIRCLE_FO_11(f, last, __VA_ARGS__)
-#define CIRCLE_FO_13(f, last, x, ...) f(x), CIRCLE_FO_12(f, last, __VA_ARGS__)
-#define CIRCLE_FO_14(f, last, x, ...) f(x), CIRCLE_FO_13(f, last, __VA_ARGS__)
-#define CIRCLE_FO_15(f, last, x, ...) f(x), CIRCLE_FO_14(f, last, __VA_ARGS__)
+#define CIRCLE_FO_2(f, last, x, ...) f(x)   CIRCLE_MSVC_EXP(CIRCLE_FO_1(f, last, __VA_ARGS__))
+#define CIRCLE_FO_3(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_2(f, last, __VA_ARGS__))
+#define CIRCLE_FO_4(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_3(f, last, __VA_ARGS__))
+#define CIRCLE_FO_5(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_4(f, last, __VA_ARGS__))
+#define CIRCLE_FO_6(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_5(f, last, __VA_ARGS__))
+#define CIRCLE_FO_7(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_6(f, last, __VA_ARGS__))
+#define CIRCLE_FO_8(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_7(f, last, __VA_ARGS__))
+#define CIRCLE_FO_9(f, last, x, ...) f(x),  CIRCLE_MSVC_EXP(CIRCLE_FO_8(f, last, __VA_ARGS__))
+#define CIRCLE_FO_10(f, last, x, ...) f(x), CIRCLE_MSVC_EXP(CIRCLE_FO_9(f, last, __VA_ARGS__))
+#define CIRCLE_FO_11(f, last, x, ...) f(x), CIRCLE_MSVC_EXP(CIRCLE_FO_10(f, last, __VA_ARGS__))
+#define CIRCLE_FO_12(f, last, x, ...) f(x), CIRCLE_MSVC_EXP(CIRCLE_FO_11(f, last, __VA_ARGS__))
+#define CIRCLE_FO_13(f, last, x, ...) f(x), CIRCLE_MSVC_EXP(CIRCLE_FO_12(f, last, __VA_ARGS__))
+#define CIRCLE_FO_14(f, last, x, ...) f(x), CIRCLE_MSVC_EXP(CIRCLE_FO_13(f, last, __VA_ARGS__))
+#define CIRCLE_FO_15(f, last, x, ...) f(x), CIRCLE_MSVC_EXP(CIRCLE_FO_14(f, last, __VA_ARGS__))
 
 #define CIRCLE_FE_0(f, last)
 #define CIRCLE_FE_1(f, last, x) last(x)
-#define CIRCLE_FE_2(f, last, x, ...) f(x) CIRCLE_FE_1(f, last, __VA_ARGS__)
-#define CIRCLE_FE_3(f, last, x, ...) f(x) CIRCLE_FE_2(f, last, __VA_ARGS__)
-#define CIRCLE_FE_4(f, last, x, ...) f(x) CIRCLE_FE_3(f, last, __VA_ARGS__)
-#define CIRCLE_FE_5(f, last, x, ...) f(x) CIRCLE_FE_4(f, last, __VA_ARGS__)
-#define CIRCLE_FE_6(f, last, x, ...) f(x) CIRCLE_FE_5(f, last, __VA_ARGS__)
-#define CIRCLE_FE_7(f, last, x, ...) f(x) CIRCLE_FE_6(f, last, __VA_ARGS__)
-#define CIRCLE_FE_8(f, last, x, ...) f(x) CIRCLE_FE_7(f, last, __VA_ARGS__)
-#define CIRCLE_FE_9(f, last, x, ...) f(x) CIRCLE_FE_8(f, last, __VA_ARGS__)
-#define CIRCLE_FE_10(f, last, x, ...) f(x) CIRCLE_FE_9(f, last, __VA_ARGS__)
-#define CIRCLE_FE_11(f, last, x, ...) f(x) CIRCLE_FE_10(f, last, __VA_ARGS__)
-#define CIRCLE_FE_12(f, last, x, ...) f(x) CIRCLE_FE_11(f, last, __VA_ARGS__)
-#define CIRCLE_FE_13(f, last, x, ...) f(x) CIRCLE_FE_12(f, last, __VA_ARGS__)
-#define CIRCLE_FE_14(f, last, x, ...) f(x) CIRCLE_FE_13(f, last, __VA_ARGS__)
-#define CIRCLE_FE_15(f, last, x, ...) f(x) CIRCLE_FE_14(f, last, __VA_ARGS__)
+#define CIRCLE_FE_2(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_1(f, last, __VA_ARGS__))
+#define CIRCLE_FE_3(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_2(f, last, __VA_ARGS__))
+#define CIRCLE_FE_4(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_3(f, last, __VA_ARGS__))
+#define CIRCLE_FE_5(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_4(f, last, __VA_ARGS__))
+#define CIRCLE_FE_6(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_5(f, last, __VA_ARGS__))
+#define CIRCLE_FE_7(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_6(f, last, __VA_ARGS__))
+#define CIRCLE_FE_8(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_7(f, last, __VA_ARGS__))
+#define CIRCLE_FE_9(f, last, x, ...) f(x)  CIRCLE_MSVC_EXP(CIRCLE_FE_8(f, last, __VA_ARGS__))
+#define CIRCLE_FE_10(f, last, x, ...) f(x) CIRCLE_MSVC_EXP(CIRCLE_FE_9(f, last, __VA_ARGS__))
+#define CIRCLE_FE_11(f, last, x, ...) f(x) CIRCLE_MSVC_EXP(CIRCLE_FE_10(f, last, __VA_ARGS__))
+#define CIRCLE_FE_12(f, last, x, ...) f(x) CIRCLE_MSVC_EXP(CIRCLE_FE_11(f, last, __VA_ARGS__))
+#define CIRCLE_FE_13(f, last, x, ...) f(x) CIRCLE_MSVC_EXP(CIRCLE_FE_12(f, last, __VA_ARGS__))
+#define CIRCLE_FE_14(f, last, x, ...) f(x) CIRCLE_MSVC_EXP(CIRCLE_FE_13(f, last, __VA_ARGS__))
+#define CIRCLE_FE_15(f, last, x, ...) f(x) CIRCLE_MSVC_EXP(CIRCLE_FE_14(f, last, __VA_ARGS__))
+// clang-format on
 
 #define CIRCLE_MATCH_ARGS(ign0, ign1, ign2, ign3, ign4, ign5, ign6, ign7,      \
                           ign8, ign9, ign10, ign11, ign12, ign13, ign14,       \
@@ -97,20 +103,18 @@ inline auto make_binding(T (*f)(const Args&...), property<Args>&... props)
     name
 
 #define CIRCLE_FOLD(action, last, ...)                                         \
-    CIRCLE_MATCH_ARGS(_0, __VA_ARGS__, CIRCLE_FO_15, CIRCLE_FO_14,             \
-                      CIRCLE_FO_13, CIRCLE_FO_12, CIRCLE_FO_11, CIRCLE_FO_10,  \
-                      CIRCLE_FO_9, CIRCLE_FO_8, CIRCLE_FO_7, CIRCLE_FO_6,      \
-                      CIRCLE_FO_5, CIRCLE_FO_4, CIRCLE_FO_3, CIRCLE_FO_2,      \
-                      CIRCLE_FO_1, CIRCLE_FO_0)                                \
-    (action, last, __VA_ARGS__)
+    CIRCLE_MSVC_EXP(CIRCLE_MATCH_ARGS(                                         \
+        _0, __VA_ARGS__, CIRCLE_FO_15, CIRCLE_FO_14, CIRCLE_FO_13,             \
+        CIRCLE_FO_12, CIRCLE_FO_11, CIRCLE_FO_10, CIRCLE_FO_9, CIRCLE_FO_8,    \
+        CIRCLE_FO_7, CIRCLE_FO_6, CIRCLE_FO_5, CIRCLE_FO_4, CIRCLE_FO_3,       \
+        CIRCLE_FO_2, CIRCLE_FO_1, CIRCLE_FO_0)(action, last, __VA_ARGS__))
 
 #define CIRCLE_FOR_EACH(action, last, ...)                                     \
-    CIRCLE_MATCH_ARGS(_0, __VA_ARGS__, CIRCLE_FE_15, CIRCLE_FE_14,             \
-                      CIRCLE_FE_13, CIRCLE_FE_12, CIRCLE_FE_11, CIRCLE_FE_10,  \
-                      CIRCLE_FE_9, CIRCLE_FE_8, CIRCLE_FE_7, CIRCLE_FE_6,      \
-                      CIRCLE_FE_5, CIRCLE_FE_4, CIRCLE_FE_3, CIRCLE_FE_2,      \
-                      CIRCLE_FE_1, CIRCLE_FE_0)                                \
-    (action, last, __VA_ARGS__)
+    CIRCLE_MSVC_EXP(CIRCLE_MATCH_ARGS(                                         \
+        _0, __VA_ARGS__, CIRCLE_FE_15, CIRCLE_FE_14, CIRCLE_FE_13,             \
+        CIRCLE_FE_12, CIRCLE_FE_11, CIRCLE_FE_10, CIRCLE_FE_9, CIRCLE_FE_8,    \
+        CIRCLE_FE_7, CIRCLE_FE_6, CIRCLE_FE_5, CIRCLE_FE_4, CIRCLE_FE_3,       \
+        CIRCLE_FE_2, CIRCLE_FE_1, CIRCLE_FE_0)(action, last, __VA_ARGS__))
 
 #define CIRCLE_IGNORE(x)
 
