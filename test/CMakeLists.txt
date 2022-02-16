@@ -25,4 +25,9 @@ if (REACTIVE_CPP_COVERAGE)
         TEST_TARGET circle-reactive-test
         SOURCE_DIR ${PROJECT_SOURCE_DIR}/include
     )
+
+    add_gcovr_target_xml(circle-reactive-coverage-xml
+        TEST_TARGET circle-reactive-test
+        SOURCE_DIR ${PROJECT_SOURCE_DIR}/include
+    )
 endif()
