@@ -6,12 +6,12 @@ branches:
   - develop
 
 image:
-- Ubuntu2004
+- Ubuntu
 - Visual Studio 2022
 - Visual Studio 2019
 
 matrix:
-  fast_finish: true
+  fast_finish: false
 
 init:
 - cmd: |-
@@ -19,6 +19,16 @@ init:
     if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" ( set generator="Visual Studio 16 2019" )
     if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2022" ( set generator="Visual Studio 17 2022" )
     echo %generator%
+- sh: |-
+    pushd .
+    cd $HOME
+    python --version
+    git clone https://github.com/emscripten-core/emsdk.git
+    cd emsdk
+    ./emsdk install 3.1.4
+    ./emsdk activate 3.1.4
+    source ./emsdk_env.sh
+    popd
 
 before_build:
 - cmd: |-
@@ -27,12 +37,45 @@ before_build:
     cmake --version
     cmake -G %generator% -A x64 ..
 - sh: |-
-    mkdir build
-    cd build
     cmake --version
+
+    echo && echo "------- GCC PROJECT GENERATION -------"
+    mkdir build-gcc
+    cd build-gcc
+    gcc --version
     cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    cd ..
+
+    echo && echo "------- CLANG PROJECT GENERATION -------"
+    mkdir build-clang
+    cd build-clang
+    clang++ --version
+    cmake -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    cd ..
+
+    echo && echo "------- EMSCRIPTEN PROJECT GENERATION -------"
+    mkdir build-emscripten
+    cd build-emscripten
+    $EMSDK/upstream/emscripten/emcc -v
+    cmake \
+     -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+     -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+     cd ..
+
 
 build_script:
 - cmd: cmake --build . --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
-- sh:  cmake --build .
+- sh: |-
+    echo && echo "------- GCC BUILD -------"
+    cmake --build build-gcc
+    echo && echo "------- CLANG BUILD -------"
+    cmake --build build-clang
+    echo && echo "------- EMSCRIPTEN BUILD -------"
+    cmake --build build-emscripten
+
+test_script:
+- sh: |-
+    echo && echo "------- GCC BUILD TEST -------" && ./build-gcc/test/circle-reactive-test
+    echo && echo "------- CLANG BUILD TEST -------" && ./build-clang/test/circle-reactive-test
+    echo && echo "------- EMSCRIPTEN BUILD TEST -------" && node ./build-emscripten/test/circle-reactive-test
 
