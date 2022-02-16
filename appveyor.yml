@@ -6,7 +6,7 @@ branches:
   - develop
 
 image:
-- Ubuntu
+- Ubuntu2004
 - Visual Studio 2022
 - Visual Studio 2019
 
@@ -30,6 +30,11 @@ init:
     source ./emsdk_env.sh
     popd
 
+install:
+- sh: |-
+    sudo apt-get update
+    sudo apt-get install -y gcovr
+
 before_build:
 - cmd: |-
     mkdir build
@@ -42,15 +47,19 @@ before_build:
     echo && echo "------- GCC PROJECT GENERATION -------"
     mkdir build-gcc
     cd build-gcc
-    gcc --version
-    cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    gcc-7 --version
+    cmake -G Ninja \
+     -DCMAKE_BUILD_TYPE=Debug \
+     -DREACTIVE_CPP_COVERAGE=ON \
+     -DCMAKE_CXX_COMPILER=g++-7 \
+     ..
     cd ..
 
     echo && echo "------- CLANG PROJECT GENERATION -------"
     mkdir build-clang
     cd build-clang
-    clang++ --version
-    cmake -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    clang++-9 --version
+    cmake -DCMAKE_CXX_COMPILER=clang++-9 -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
     cd ..
 
     echo && echo "------- EMSCRIPTEN PROJECT GENERATION -------"
@@ -62,6 +71,17 @@ before_build:
      -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
      cd ..
 
+    echo && echo "------- COVERAGE PROJECT GENERATION -------"
+    mkdir build-coverage
+    cd build-coverage
+    gcc-9 --version
+    cmake -G Ninja \
+     -DCMAKE_BUILD_TYPE=Debug \
+     -DREACTIVE_CPP_COVERAGE=ON \
+     -DCMAKE_CXX_COMPILER=g++-9 \
+     ..
+    cd ..
+
 
 build_script:
 - cmd: cmake --build . --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
@@ -72,6 +92,8 @@ build_script:
     cmake --build build-clang
     echo && echo "------- EMSCRIPTEN BUILD -------"
     cmake --build build-emscripten
+    echo && echo "------- COVERAGE BUILD -------"
+    cmake --build build-coverage --target circle-reactive-coverage-xml
 
 test_script:
 - sh: |-
@@ -79,3 +101,10 @@ test_script:
     echo && echo "------- CLANG BUILD TEST -------" && ./build-clang/test/circle-reactive-test
     echo && echo "------- EMSCRIPTEN BUILD TEST -------" && node ./build-emscripten/test/circle-reactive-test
 
+on_success:
+- sh: |-
+    cd build-coverage/test
+    ls -l
+    curl -Os https://uploader.codecov.io/latest/linux/codecov
+    chmod +x codecov
+    ./codecov -f circle-reactive-test-coverage.xml
