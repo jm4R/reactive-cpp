@@ -8,6 +8,35 @@
 
 namespace circle {
 
+namespace detail {
+template <typename T, typename = bool>
+struct is_equality_comparable : std::false_type
+{
+};
+
+template <typename T>
+struct is_equality_comparable<
+    T, typename std::enable_if_t<true, decltype(std::declval<const T&>() ==
+                                                std::declval<const T&>())>>
+    : std::true_type
+{
+};
+
+template <typename T>
+constexpr bool eq(const T& v1, const T& v2)
+{
+    if constexpr (is_equality_comparable<T>::value)
+    {
+        return v1 == v2;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+} // namespace detail
+
 template <typename T>
 class value_provider
 {
@@ -76,7 +105,7 @@ public:
 
     bool assign(T value)
     {
-        if (value != value_)
+        if (!detail::eq(value, value_))
         {
             value_ = std::move(value);
             value_changed_.emit(*this);
@@ -148,7 +177,7 @@ private:
         {
             dirty_ = false;
             auto new_value = provider_->get();
-            if (new_value != value_)
+            if (!detail::eq(new_value, value_))
             {
                 const_cast<T&>(value_) = std::move(new_value);
                 return true;

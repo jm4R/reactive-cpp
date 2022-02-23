@@ -4,7 +4,7 @@
 
 using namespace circle;
 
-int global_int;
+static int global_int;
 
 TEST_CASE("signal")
 {
