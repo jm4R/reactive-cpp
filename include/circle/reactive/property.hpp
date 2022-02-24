@@ -1,7 +1,6 @@
 #pragma once
 
 #include <circle/reactive/signal.hpp>
-#include <circle/reactive/utils.hpp>
 
 #include <functional>
 #include <memory>
