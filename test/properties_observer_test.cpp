@@ -39,6 +39,15 @@ TEST_CASE("properties_observer")
     b2 = 10;
     REQUIRE(called);
 
+    bool destroyed{};
+    obs.set_destroyed_callback([&]{ destroyed = true; });
+    REQUIRE_FALSE(destroyed);
+
+    {
+        auto b3 = std::move(b2);
+    }
+
+    REQUIRE(destroyed);
 }
 
 TEST_CASE("almost binding")
@@ -48,7 +57,7 @@ TEST_CASE("almost binding")
     properties_observer obs{a, b};
     long c = a * b;
     obs.set_callback(
-        [&c, a = property_ref{a}, b = property_ref{b}] { c = a * b; });
+        [&c, a = property_ref{a}, b = property_ref{b}] { c = *a * *b; });
     REQUIRE(c == 1);
     a = 2;
     REQUIRE(c == 2);

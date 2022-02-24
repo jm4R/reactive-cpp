@@ -1,5 +1,6 @@
 #pragma once
 
+#include <circle/reactive/enable_observe_this.hpp>
 #include <circle/reactive/signal.hpp>
 
 #include <functional>
@@ -50,7 +51,7 @@ template <typename T>
 using value_provider_ptr = std::unique_ptr<value_provider<T>>;
 
 template <typename T>
-class property
+class property : public enable_ref<property<T>>
 {
 public:
     property() = default;
@@ -61,32 +62,29 @@ public:
     property(const property&) = delete;
     property& operator=(const property&) = delete;
 
-    ~property()
-    {
-        before_destroyed_.emit(*this);
-    }
+    ~property() { this->call_before_destroyed(); }
 
     property(property&& other) noexcept
-        : value_{std::move(other.value_)},
+        : enable_ref<property<T>>{std::move(other)},
+          value_{std::move(other.value_)},
           // dirty_{other.dirty_},
-          value_changed_{std::move(other.value_changed_)},
-          moved_{std::move(other.moved_)}
+          value_changed_{std::move(other.value_changed_)}
     {
         other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
-        moved_.emit(*this);
+        this->call_moved();
     }
 
     property& operator=(property&& other) noexcept
     {
+        static_cast<enable_ref<property<T>>&>(*this) = std::move(other);
         value_ = std::move(other.value_);
         // dirty_ = other.dirty_;
         value_changed_ = std::move(other.value_changed_);
-        moved_ = std::move(other.moved_);
 
         other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
-        moved_.emit(*this);
+        this->call_moved();
         return *this;
     }
 
@@ -155,19 +153,11 @@ public:
         return value_;
     }
 
-    const T& operator*() const
-    {
-        return get();
-    }
+    const T& operator*() const { return get(); }
 
-    operator const T&() const
-    {
-        return get();
-    }
+    operator const T&() const { return get(); }
 
     signal<property&>& value_changed() { return value_changed_; }
-    signal<property&>& moved() { return moved_; }
-    signal<property&>& before_destroyed() { return before_destroyed_; }
 
 private:
     bool materialize() const
@@ -191,8 +181,6 @@ private:
     mutable bool dirty_{};
     scoped_connection provider_observer_;
     signal<property&> value_changed_;
-    signal<property&> moved_;
-    signal<property&> before_destroyed_;
 };
 
 template <typename T>
@@ -206,52 +194,12 @@ struct is_property<property<T>> : std::true_type
 };
 
 template <typename T>
-class property_ref // read-only for now
+class property_ref : public reference<property<T>>
 {
 public:
-    property_ref(property<T>& prop) noexcept
-        : property_{&prop}, moved_connection_{connect_moved()}
-    {
-    }
+    property_ref(property<T>& src) noexcept : reference<property<T>>{src} {}
 
-    property_ref(const property_ref& other) noexcept
-        : property_{other.property_}, moved_connection_{connect_moved()}
-    {
-    }
-    property_ref& operator=(const property_ref& other) noexcept
-    {
-        property_ = other.property_;
-        moved_connection_ = connect_moved();
-    }
-
-    property_ref(property_ref&& other) noexcept
-        : property_{other.property_}, moved_connection_{connect_moved()}
-    {
-        other.moved_connection_.disconnect();
-    }
-
-    property_ref& operator=(property_ref&& other) noexcept
-    {
-        property_ = other.property_;
-        moved_connection_ = connect_moved();
-        other.moved_connection_.disconnect();
-        return *this;
-    }
-
-    operator const T&() const { return *property_; }
-
-private:
-    connection connect_moved() noexcept
-    {
-        return property_->moved().connect(
-            [this](property<T>& p) noexcept { on_moved(p); });
-    }
-
-    void on_moved(property<T>& prop) noexcept { property_ = &prop; }
-
-private:
-    property<T>* property_;
-    scoped_connection moved_connection_;
+    operator const T&() const { return *this->get(); }
 };
 
 } // namespace circle

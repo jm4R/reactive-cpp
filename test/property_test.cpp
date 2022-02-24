@@ -118,6 +118,38 @@ TEST_CASE("property")
         p = noncomparable{1, 2};
         REQUIRE(changed);
     }
+
+    SECTION("is up-to-date when moved signal called")
+    {
+        int res{};
+        property<int> p1 = 5;
+        p1.moved().connect([&](int val){ res = val; });
+
+        SECTION("by constructor")
+        {
+            property<int> p2 = std::move(p1);
+            REQUIRE(res == 5);
+        }
+
+        SECTION("by operator=")
+        {
+            property<int> p2;
+            p2 = std::move(p1);
+            REQUIRE(res == 5);
+        }
+    }
+
+    SECTION("is up-to-date when before_destroyed signal called")
+    {
+
+        int res{};
+        {
+            property<int> p1;
+            p1.before_destroyed().connect([&](int val){ res = val; });
+            p1 = 5;
+        }
+        REQUIRE(res == 5);
+    }
 }
 
 struct test_provider final : value_provider<int>
