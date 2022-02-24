@@ -2,12 +2,21 @@
 
 #include <catch2/catch.hpp>
 
+#include <string>
+
 using namespace circle;
 
-int global_int;
+static int global_int;
 
 TEST_CASE("signal")
 {
+    static_assert(
+        std::is_nothrow_default_constructible_v<signal<int, std::string>>);
+    static_assert(
+        std::is_nothrow_move_constructible_v<signal<int, std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<signal<int, std::string>>);
+    static_assert(std::is_nothrow_destructible_v<signal<int, std::string>>);
+
     SECTION("empty")
     {
         signal<int> s;
@@ -19,7 +28,7 @@ TEST_CASE("signal")
         int res{};
 
         signal<int> s;
-        s.connect([&](int v){ res = v; });
+        s.connect([&](int v) { res = v; });
         REQUIRE(res == 0);
         s.emit(5);
         REQUIRE(res == 5);
@@ -30,7 +39,7 @@ TEST_CASE("signal")
         global_int = 0;
 
         signal<int> s;
-        s.connect(+[](int v){ global_int = v; });
+        s.connect(+[](int v) { global_int = v; });
         REQUIRE(global_int == 0);
         s.emit(5);
         REQUIRE(global_int == 5);
@@ -121,7 +130,7 @@ TEST_CASE("signal")
         int res{};
 
         signal<int> s;
-        s.connect([&](int v){ res = v; });
+        s.connect([&](int v) { res = v; });
         REQUIRE(res == 0);
         s.emit(5);
         REQUIRE(res == 5);
@@ -145,7 +154,7 @@ TEST_CASE("signal")
         int res{};
 
         signal<int, char> s;
-        s.connect([&](int v){ res = v; });
+        s.connect([&](int v) { res = v; });
         REQUIRE(res == 0);
         s.emit(5, 'a');
         REQUIRE(res == 5);
@@ -226,7 +235,7 @@ TEST_CASE("signal")
         int res{};
 
         signal<int> s1;
-        s1.connect([&](int v){ res = v; });
+        s1.connect([&](int v) { res = v; });
         auto s2 = std::move(s1);
         s2.emit(5);
         REQUIRE(res == 5);
@@ -237,7 +246,7 @@ TEST_CASE("signal")
         int res{};
 
         signal<int> s1;
-        s1.connect([&](int v){ res = v; });
+        s1.connect([&](int v) { res = v; });
         signal<int> s2;
         s2 = std::move(s1);
         s2.emit(5);
@@ -254,9 +263,7 @@ TEST_CASE("signal")
         int external_called = 0;
         int internal_called = 0;
 
-        auto internal = [&] {
-            ++internal_called;
-        };
+        auto internal = [&] { ++internal_called; };
 
         s.connect([&] {
             if (!external_called)
@@ -282,16 +289,14 @@ TEST_CASE("signal")
         int external_called = 0;
         int internal_called = 0;
 
-        auto internal = [&] {
-            ++internal_called;
-        };
+        auto internal = [&] { ++internal_called; };
 
         s.connect([&] {
             s.connect(internal);
             ++external_called;
         });
 
-        for (int i=0; i<100; ++i)
+        for (int i = 0; i < 100; ++i)
         {
             internal_called = 0;
             external_called = 0;
@@ -307,8 +312,8 @@ TEST_CASE("signal")
         std::string res1;
         std::string res2;
 
-        s.connect([&](std::string v) { res1 = std::move(v); } );
-        s.connect([&](std::string v) { res2 = std::move(v); } );
+        s.connect([&](std::string v) { res1 = std::move(v); });
+        s.connect([&](std::string v) { res2 = std::move(v); });
         s.emit(std::string{"easter"});
 
         REQUIRE(res1 == "easter");
@@ -318,6 +323,12 @@ TEST_CASE("signal")
 
 TEST_CASE("connection")
 {
+    static_assert(std::is_nothrow_default_constructible_v<connection>);
+    static_assert(std::is_nothrow_move_constructible_v<connection>);
+    static_assert(std::is_nothrow_move_assignable_v<connection>);
+    static_assert(std::is_nothrow_copy_constructible_v<connection>);
+    static_assert(std::is_nothrow_copy_assignable_v<connection>);
+    static_assert(std::is_nothrow_destructible_v<connection>);
     SECTION("empty")
     {
         connection c;
@@ -329,7 +340,7 @@ TEST_CASE("connection")
         int res{};
 
         signal<int> s;
-        connection c = s.connect([&](int v){ res = v; });
+        connection c = s.connect([&](int v) { res = v; });
         s.emit(5);
         c.disconnect();
         s.emit(10);
@@ -341,7 +352,7 @@ TEST_CASE("connection")
         int res{};
 
         signal<int> s;
-        connection c = s.connect([&](int v){ res = v; });
+        connection c = s.connect([&](int v) { res = v; });
         s.emit(5);
         auto c2 = c;
         c2.disconnect();
@@ -354,7 +365,7 @@ TEST_CASE("connection")
         int res{};
 
         signal<int> s;
-        connection c = s.connect([&](int v){ res = v; });
+        connection c = s.connect([&](int v) { res = v; });
         s.emit(5);
         auto c2 = std::move(c);
         c2.disconnect();
@@ -366,8 +377,8 @@ TEST_CASE("connection")
     {
         signal<int> s1;
         signal<float> s2;
-        connection c1 = s1.connect([](){});
-        connection c2 = s2.connect([](){});
+        connection c1 = s1.connect([]() {});
+        connection c2 = s2.connect([]() {});
         REQUIRE(c1.belongs_to(s1));
         REQUIRE(c2.belongs_to(s2));
         REQUIRE_FALSE(c1.belongs_to(s2));
@@ -378,8 +389,8 @@ TEST_CASE("connection")
     {
         signal<int> s1;
         signal<float> s2;
-        connection c1 = s1.connect([](){});
-        connection c2 = s2.connect([](){});
+        connection c1 = s1.connect([]() {});
+        connection c2 = s2.connect([]() {});
         REQUIRE(c1.active());
         REQUIRE(c2.active());
         c1.block(true);
@@ -392,8 +403,8 @@ TEST_CASE("connection")
     {
         signal<int> s1;
         signal<float> s2;
-        connection c1 = s1.connect([](){});
-        connection c2 = s2.connect([](){});
+        connection c1 = s1.connect([]() {});
+        connection c2 = s2.connect([]() {});
         REQUIRE(c1.active());
         REQUIRE(c2.active());
         c1.block(true);
@@ -407,7 +418,7 @@ TEST_CASE("connection")
         connection c;
         {
             signal<> s;
-            c = s.connect([]{});
+            c = s.connect([] {});
             REQUIRE(c.active());
         }
         REQUIRE_FALSE(c.active());
@@ -541,9 +552,7 @@ TEST_CASE("connection")
         int external_called = 0;
         int internal_called = 0;
 
-        auto internal = [&] {
-            ++internal_called;
-        };
+        auto internal = [&] { ++internal_called; };
 
         s.connect([&] {
             if (!external_called)
@@ -566,13 +575,17 @@ TEST_CASE("connection")
 
 TEST_CASE("scoped_connection")
 {
+    static_assert(std::is_nothrow_default_constructible_v<scoped_connection>);
+    static_assert(std::is_nothrow_move_constructible_v<scoped_connection>);
+    static_assert(std::is_nothrow_move_assignable_v<scoped_connection>);
+    static_assert(std::is_nothrow_destructible_v<scoped_connection>);
     SECTION("simple")
     {
         int res{};
 
         signal<int> s;
         {
-            scoped_connection c = s.connect([&](int v){ res = v; });
+            scoped_connection c = s.connect([&](int v) { res = v; });
             s.emit(5);
         }
         s.emit(10);
@@ -584,7 +597,7 @@ TEST_CASE("scoped_connection")
         int res{};
 
         signal<int> s;
-        scoped_connection c = s.connect([&](int v){ res = v; });
+        scoped_connection c = s.connect([&](int v) { res = v; });
         s.emit(5);
         c.release();
         s.emit(10);
@@ -596,7 +609,7 @@ TEST_CASE("scoped_connection")
         int res{};
 
         signal<int> s;
-        scoped_connection c = s.connect([&](int v){ res = v; });
+        scoped_connection c = s.connect([&](int v) { res = v; });
         s.emit(5);
         c.disconnect();
         s.emit(10);
@@ -626,21 +639,58 @@ TEST_CASE("scoped_connection")
     }
 }
 
+TEST_CASE("connection_blocker")
+{
+    static_assert(
+        std::is_nothrow_constructible_v<connection_blocker, connection>);
+    static_assert(std::is_nothrow_destructible_v<signal<int, std::string>>);
+
+    int res{};
+
+    signal<int> s;
+    connection c = s.connect([&](int val) { res = val; });
+
+    s.emit(5);
+
+    REQUIRE(res == 5);
+
+    {
+        connection_blocker blocker1{c};
+        s.emit(10);
+        {
+            connection_blocker blocker2{c};
+            s.emit(15);
+        }
+        s.emit(20);
+        REQUIRE(c.blocked());
+    }
+
+    REQUIRE(res == 5);
+    REQUIRE(!c.blocked());
+
+    s.emit(25);
+    REQUIRE(res == 25);
+}
+
 TEST_CASE("bad usage")
 {
     signal<int> s;
     connection c;
-    REQUIRE_FALSE(c.block(true));
-    REQUIRE_FALSE(c.blocked());
+    REQUIRE(c.block(true));
+    REQUIRE(c.blocked());
 
-    c = s.connect([&]{
+    c = s.connect([&] {
         c.disconnect();
-        REQUIRE_FALSE(c.block(true));
-        REQUIRE_FALSE(c.blocked());
+        REQUIRE(c.block(true));
+        REQUIRE(c.blocked());
     });
 
     s.emit(5);
 
-    REQUIRE_FALSE(c.block(true));
-    REQUIRE_FALSE(c.blocked());
+    REQUIRE(c.block(true));
+    REQUIRE(c.blocked());
+
+    {
+        connection_blocker blocker{c};
+    }
 }

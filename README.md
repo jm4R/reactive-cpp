@@ -73,3 +73,29 @@ The example prints:
 
 > max(60, 75) = 75\
 > max(120, 75) = 120
+
+## Public types
+
+In header `<circle/reactive/signal.hpp>`
+
+* `signal<Args...>`
+* `connection`
+* `scoped_connection`
+* `connection_blocker`
+
+In header `<circle/reactive/property.hpp>`
+
+* `property<T>`
+* `property_ref<T>`
+* `value_provider` abstract class
+* `value_provider_ptr` alias
+* `is_property<T>` type trait
+
+In header `<circle/reactive/properties_observer.hpp>`
+
+* `properties_observer<Properties...>`
+
+In header `<circle/reactive/bind.hpp>`
+
+* `binding<T, DependentProperties...>`
+* `BIND(dependent_list..., expression)` helper macro

@@ -8,7 +8,14 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-//#include <stdexcept>
+
+#ifdef NDEBUG
+#    define CIRCLE_WARN(res, reason) (res)
+#else
+#    include <cstdio>
+#    define CIRCLE_WARN(res, reason)                                           \
+        (fputs("WARNING: " reason "\n", stderr), res)
+#endif
 
 namespace circle {
 
@@ -46,17 +53,9 @@ constexpr void invoke(F&& f, Args&&... args)
                 std::forward_as_tuple(std::forward<Args>(args)...));
 }
 
-template <typename T>
-constexpr T fail(T val, const char* reason)
-{
-    (void) reason;
-    // throw std::exception(reason);
-    return val;
-}
-
 struct increment_guard
 {
-    increment_guard(unsigned& val) : val_{val} { ++val_; }
+    increment_guard(unsigned& val) noexcept : val_{val} { ++val_; }
     ~increment_guard() { --val_; }
 
 private:
@@ -70,10 +69,10 @@ enum class id : unsigned
 class connections_container_base
 {
 public:
-    virtual void disconnect(id connection_id) = 0;
-    [[nodiscard]] virtual bool active(id connection_id) const = 0;
-    virtual bool block(id connection_id, bool) = 0;
-    [[nodiscard]] virtual bool blocked(id connection_id) const = 0;
+    virtual void disconnect(id connection_id) noexcept = 0;
+    [[nodiscard]] virtual bool active(id connection_id) const noexcept = 0;
+    virtual bool block(id connection_id, bool) noexcept = 0;
+    [[nodiscard]] virtual bool blocked(id connection_id) const noexcept = 0;
 
 protected:
     ~connections_container_base() = default;
@@ -92,7 +91,7 @@ class connections_container final : public connections_container_base
         bool lazy_disconnect{};
     };
 
-    const connection_data* find_impl(id connection_id) const
+    const connection_data* find_impl(id connection_id) const noexcept
     {
         auto find_in = [&](const std::vector<connection_data>& v) {
             auto it = std::lower_bound(v.begin(), v.end(), connection_id,
@@ -108,9 +107,9 @@ class connections_container final : public connections_container_base
         return find_in(new_connections_);
     }
 
-    const connection_data* find(id id) const { return find_impl(id); }
+    const connection_data* find(id id) const noexcept { return find_impl(id); }
 
-    connection_data* find(id id)
+    connection_data* find(id id) noexcept
     {
         return const_cast<connection_data*>(find_impl(id));
     }
@@ -123,12 +122,12 @@ class connections_container final : public connections_container_base
         return detail::id{val};
     }
 
-    static bool active(const connection_data& c)
+    static bool active(const connection_data& c) noexcept
     {
         return !!c.slot && !c.lazy_disconnect;
     }
 
-    static void disconnect(connection_data& c)
+    static void disconnect(connection_data& c) noexcept
     {
         if (!c.invoke_depth)
         {
@@ -169,13 +168,15 @@ public:
         return id;
     }
 
-    void disconnect_all()
+    void disconnect_all() noexcept
     {
         if (!iterations_depth_)
         {
             connections_ = {};
             new_connections_ = {};
-        } else {
+        }
+        else
+        {
             for (auto& c : connections_)
             {
                 disconnect(c);
@@ -183,7 +184,7 @@ public:
         }
     }
 
-    void disconnect(id connection_id) override
+    void disconnect(id connection_id) noexcept override
     {
         if (!iterations_depth_)
         {
@@ -203,7 +204,7 @@ public:
         }
     }
 
-    [[nodiscard]] bool active(id connection_id) const override
+    [[nodiscard]] bool active(id connection_id) const noexcept override
     {
         if (auto c = find(connection_id))
         {
@@ -212,27 +213,27 @@ public:
         return false;
     }
 
-    bool block(id connection_id, bool val) override
+    bool block(id connection_id, bool val) noexcept override
     {
         if (auto c = find(connection_id))
         {
             if (!active(*c))
-                return detail::fail(false, "Blocking inactive connection");
+                return CIRCLE_WARN(true, "Blocking inactive connection");
             return std::exchange(c->blocked, val);
         }
-        return detail::fail(false, "Blocking inactive connection");
+        return CIRCLE_WARN(true, "Blocking inactive connection");
     }
 
-    [[nodiscard]] bool blocked(id connection_id) const override
+    [[nodiscard]] bool blocked(id connection_id) const noexcept override
     {
         if (auto c = find(connection_id))
         {
             if (!c->slot || c->lazy_disconnect)
-                return detail::fail(false,
-                                    "Checking inactive connection if blocked");
+                return CIRCLE_WARN(true,
+                                   "Checking inactive connection if blocked");
             return c->blocked;
         }
-        return detail::fail(false, "Checking inactive connection if blocked");
+        return CIRCLE_WARN(true, "Checking inactive connection if blocked");
     }
 
 private:
@@ -268,7 +269,7 @@ class connection
 public:
     connection() = default;
 
-    [[nodiscard]] bool active() const
+    [[nodiscard]] bool active() const noexcept
     {
         if (auto s = connections_.lock())
         {
@@ -277,7 +278,7 @@ public:
         return false;
     }
 
-    void disconnect()
+    void disconnect() noexcept
     {
         if (auto s = connections_.lock())
         {
@@ -286,27 +287,27 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] bool belongs_to(const T& v)
+    [[nodiscard]] bool belongs_to(const T& v) noexcept
     {
         return v.owns(*this);
     }
 
-    bool block(bool val)
+    bool block(bool val) noexcept
     {
         if (auto s = connections_.lock())
         {
             return s->block(id_, val);
         }
-        return detail::fail(false, "Blocking inactive connection");
+        return CIRCLE_WARN(true, "Blocking inactive connection");
     }
 
-    [[nodiscard]] bool blocked() const
+    [[nodiscard]] bool blocked() const noexcept
     {
         if (auto s = connections_.lock())
         {
             return s->blocked(id_);
         }
-        return detail::fail(false, "Checking inactive connection if blocked");
+        return CIRCLE_WARN(true, "Checking inactive connection if blocked");
     }
 
 private:
@@ -321,18 +322,25 @@ private:
     detail::id id_;
 };
 
-struct connection_blocker
+class connection_blocker
 {
-    connection_blocker(connection c) : connection_{c}
+public:
+    connection_blocker(connection c) noexcept : connection_{c}
     {
         if (!c.active())
-            detail::fail(false,
-                         "Creating connection_blocker on inactive connection");
+            CIRCLE_WARN(true,
+                        "Creating connection_blocker on inactive connection");
         was_ = c.block(true);
     }
 
+    connection_blocker(const connection_blocker&) = delete;
+    connection_blocker& operator=(const connection_blocker&) = delete;
+    connection_blocker(connection_blocker&&) = delete;
+    connection_blocker operator==(connection_blocker&&) = delete;
+
     ~connection_blocker() { connection_.block(was_); }
 
+private:
     bool was_;
     connection connection_;
 };
@@ -396,7 +404,7 @@ public:
 
     void disconnect(connection c) { c.disconnect(); }
 
-    [[nodiscard]] bool owns(connection c) const
+    [[nodiscard]] bool owns(connection c) const noexcept
     {
         return c.active() && c.connections_.lock() == connections_;
     }
@@ -426,15 +434,15 @@ public:
     {
     }
 
-    scoped_connection& operator=(scoped_connection&& other)
+    scoped_connection& operator=(scoped_connection&& other) noexcept
     {
         c_.disconnect();
         c_ = std::exchange(other.c_, {});
         return *this;
     }
 
-    scoped_connection(connection src) : c_{std::move(src)} {}
-    scoped_connection& operator=(connection src)
+    scoped_connection(connection src) noexcept : c_{std::move(src)} {}
+    scoped_connection& operator=(connection src) noexcept
     {
         c_.disconnect();
         c_ = std::move(src);
@@ -442,12 +450,14 @@ public:
     }
     ~scoped_connection() { c_.disconnect(); }
 
-    connection& get() { return c_; }
-    void release() { c_ = {}; }
-    void disconnect() { c_.disconnect(); }
+    connection& get() noexcept { return c_; }
+    void release() noexcept { c_ = {}; }
+    void disconnect() noexcept { c_.disconnect(); }
 
 private:
     connection c_;
 };
 
 } // namespace circle
+
+#undef CIRCLE_WARN

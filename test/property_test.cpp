@@ -2,32 +2,49 @@
 
 #include <catch2/catch.hpp>
 
+#include <string>
+
 using namespace circle;
+
+struct noncomparable
+{
+    int a;
+    int b;
+};
 
 TEST_CASE("property")
 {
+    static_assert(
+        std::is_nothrow_default_constructible_v<property<std::string>>);
+    static_assert(std::is_nothrow_move_constructible_v<property<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property<std::string>>);
+
+    static_assert(is_property<property<std::string>>::value);
+    static_assert(!is_property<signal<std::string>>::value);
+
     SECTION("default-constructed")
     {
-        circle::property<int> p;
+        property<int> p;
         REQUIRE(p == 0);
     }
 
     SECTION("value-constructed")
     {
-        circle::property<int> p{5};
+        property<int> p{5};
         REQUIRE(p == 5);
     }
 
     SECTION("operator=")
     {
-        circle::property<int> p{};
+        property<int> p{};
         p = 5;
         REQUIRE(p == 5);
     }
 
     SECTION("value_changed")
     {
-        circle::property<int> p{};
+        property<int> p{};
         int new_value = 0;
         bool changed = false;
         p.value_changed().connect([&](int val) {
@@ -43,7 +60,7 @@ TEST_CASE("property")
 
         SECTION("changed after moved")
         {
-            circle::property<int> p2 = std::move(p);
+            property<int> p2 = std::move(p);
             p2 = 5;
             REQUIRE(new_value == 5);
         }
@@ -58,26 +75,52 @@ TEST_CASE("property")
 
     SECTION("moved")
     {
-        circle::property<int> p{};
-        circle::property<int>* addr = &p;
+        property<int> p{};
+        property<int>* addr = &p;
         p.moved().connect([&](property<int>& pl) { addr = &pl; });
 
         SECTION("moved by move constructor")
         {
-            circle::property<int> p2 = std::move(p);
+            property<int> p2 = std::move(p);
             REQUIRE(addr == &p2);
         }
 
         SECTION("moved by move assignment operator")
         {
-            circle::property<int> p2;
+            property<int> p2;
             p2 = std::move(p);
             REQUIRE(addr == &p2);
         }
     }
+
+    SECTION("before_destroyed")
+    {
+        int val{};
+        {
+            property<int> p{};
+            p.before_destroyed().connect([&](property<int>& pl) { val = pl; });
+            p = 5;
+            REQUIRE(val == 0);
+        }
+
+        REQUIRE(val == 5);
+    }
+
+    SECTION("non-comparable type")
+    {
+        property<noncomparable> p = {};
+        bool changed = false;
+        p.value_changed().connect([&] { changed = true; });
+
+        p = noncomparable{1, 2};
+        REQUIRE(changed);
+        changed = false;
+        p = noncomparable{1, 2};
+        REQUIRE(changed);
+    }
 }
 
-struct test_provider final : circle::value_provider<int>
+struct test_provider final : value_provider<int>
 {
     std::function<void()> updated_;
     std::function<void()> before_invalid_;
@@ -102,7 +145,7 @@ struct test_provider final : circle::value_provider<int>
 
     inline static test_provider* instance{};
 
-    static circle::value_provider_ptr<int> make(int initial_value)
+    static value_provider_ptr<int> make(int initial_value)
     {
         auto ptr = std::make_unique<test_provider>(initial_value);
         instance = ptr.get();
@@ -112,7 +155,7 @@ struct test_provider final : circle::value_provider<int>
 
 TEST_CASE("property with value_provider")
 {
-    circle::property<int> p;
+    property<int> p;
     int new_value = 0;
     bool change_called = false;
     auto c = p.value_changed().connect([&](int val) {
@@ -206,6 +249,16 @@ TEST_CASE("property with value_provider")
 
 TEST_CASE("property_ref")
 {
+    static_assert(std::is_nothrow_constructible_v<property_ref<std::string>,
+                                                  property<std::string>&>);
+    static_assert(
+        std::is_nothrow_move_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property_ref<std::string>>);
+    static_assert(
+        std::is_nothrow_copy_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_copy_assignable_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property_ref<std::string>>);
+
     property<int> p1 = 5;
     property_ref ref = p1;
     REQUIRE(ref == 5);
@@ -228,7 +281,7 @@ TEST_CASE("property_ref")
     SECTION("copy")
     {
         property_ref ref2 = ref;
-        p1=10;
+        p1 = 10;
         REQUIRE(ref == 10);
         REQUIRE(ref2 == 10);
     }
@@ -238,7 +291,7 @@ TEST_CASE("property_ref")
         property<int> p2 = 100;
         property_ref ref2 = p2;
         ref2 = std::move(ref);
-        p1=10;
+        p1 = 10;
         p2 = 200;
         REQUIRE(ref2 == 10);
     }

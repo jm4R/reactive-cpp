@@ -7,8 +7,14 @@
 
 using namespace circle;
 
+static int global_int;
+
 TEST_CASE("binding")
 {
+    static_assert(std::is_constructible_v<binding<float, int>, property<int>&,
+                                          float (*)(const int&)>);
+    static_assert(std::is_nothrow_destructible_v<binding<float, int>>);
+
     property<int> a;
     property<int> b;
     property<int> c;
@@ -68,5 +74,17 @@ TEST_CASE("binding")
         b = 75;
 
         REQUIRE(*str == std::string{"max(60, 75) = 75"});
+    }
+
+    SECTION("lazy evaluation")
+    {
+        global_int = 0;
+        c = BIND(a, b, global_int = a + b);
+        a = 18;
+        b = 4;
+
+        REQUIRE(global_int == 0);
+        REQUIRE(c == 22);
+        REQUIRE(global_int == 22);
     }
 }
