@@ -11,6 +11,10 @@ static int global_int;
 
 TEST_CASE("binding")
 {
+    static_assert(std::is_constructible_v<binding<float, int>, property<int>&,
+                                          float (*)(const int&)>);
+    static_assert(std::is_nothrow_destructible_v<binding<float, int>>);
+
     property<int> a;
     property<int> b;
     property<int> c;

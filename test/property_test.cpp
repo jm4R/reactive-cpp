@@ -2,6 +2,8 @@
 
 #include <catch2/catch.hpp>
 
+#include <string>
+
 using namespace circle;
 
 struct noncomparable
@@ -12,6 +14,15 @@ struct noncomparable
 
 TEST_CASE("property")
 {
+    static_assert(
+        std::is_nothrow_default_constructible_v<property<std::string>>);
+    static_assert(std::is_nothrow_move_constructible_v<property<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property<std::string>>);
+
+    static_assert(is_property<property<std::string>>::value);
+    static_assert(!is_property<signal<std::string>>::value);
+
     SECTION("default-constructed")
     {
         property<int> p;
@@ -238,6 +249,16 @@ TEST_CASE("property with value_provider")
 
 TEST_CASE("property_ref")
 {
+    static_assert(std::is_nothrow_constructible_v<property_ref<std::string>,
+                                                  property<std::string>&>);
+    static_assert(
+        std::is_nothrow_move_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property_ref<std::string>>);
+    static_assert(
+        std::is_nothrow_copy_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_copy_assignable_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property_ref<std::string>>);
+
     property<int> p1 = 5;
     property_ref ref = p1;
     REQUIRE(ref == 5);
@@ -260,7 +281,7 @@ TEST_CASE("property_ref")
     SECTION("copy")
     {
         property_ref ref2 = ref;
-        p1=10;
+        p1 = 10;
         REQUIRE(ref == 10);
         REQUIRE(ref2 == 10);
     }
@@ -270,7 +291,7 @@ TEST_CASE("property_ref")
         property<int> p2 = 100;
         property_ref ref2 = p2;
         ref2 = std::move(ref);
-        p1=10;
+        p1 = 10;
         p2 = 200;
         REQUIRE(ref2 == 10);
     }

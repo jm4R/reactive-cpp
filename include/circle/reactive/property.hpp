@@ -56,7 +56,7 @@ class property
 public:
     property() = default;
 
-    property(T value) : value_{std::move(value)} {}
+    property(T value) noexcept : value_{std::move(value)} {}
     property(value_provider_ptr<T> provider) { assign(std::move(provider)); }
 
     property(const property&) = delete;
@@ -67,7 +67,7 @@ public:
         before_destroyed_.emit(*this);
     }
 
-    property(property&& other)
+    property(property&& other) noexcept
         : value_{std::move(other.value_)},
           // dirty_{other.dirty_},
           value_changed_{std::move(other.value_changed_)},
@@ -78,7 +78,7 @@ public:
         moved_.emit(*this);
     }
 
-    property& operator=(property&& other)
+    property& operator=(property&& other) noexcept
     {
         value_ = std::move(other.value_);
         // dirty_ = other.dirty_;
@@ -210,28 +210,28 @@ template <typename T>
 class property_ref // read-only for now
 {
 public:
-    property_ref(property<T>& prop)
+    property_ref(property<T>& prop) noexcept
         : property_{&prop}, moved_connection_{connect_moved()}
     {
     }
 
-    property_ref(const property_ref& other)
+    property_ref(const property_ref& other) noexcept
         : property_{other.property_}, moved_connection_{connect_moved()}
     {
     }
-    property_ref& operator=(const property_ref& other)
+    property_ref& operator=(const property_ref& other) noexcept
     {
         property_ = other.property_;
         moved_connection_ = connect_moved();
     }
 
-    property_ref(property_ref&& other)
+    property_ref(property_ref&& other) noexcept
         : property_{other.property_}, moved_connection_{connect_moved()}
     {
         other.moved_connection_.disconnect();
     }
 
-    property_ref& operator=(property_ref&& other)
+    property_ref& operator=(property_ref&& other) noexcept
     {
         property_ = other.property_;
         moved_connection_ = connect_moved();
@@ -242,13 +242,13 @@ public:
     operator const T&() const { return *property_; }
 
 private:
-    connection connect_moved()
+    connection connect_moved() noexcept
     {
         return property_->moved().connect(
-            [this](property<T>& p) { on_moved(p); });
+            [this](property<T>& p) noexcept { on_moved(p); });
     }
 
-    void on_moved(property<T>& prop) { property_ = &prop; }
+    void on_moved(property<T>& prop) noexcept { property_ = &prop; }
 
 private:
     property<T>* property_;
