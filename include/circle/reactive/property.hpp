@@ -1,7 +1,7 @@
 #pragma once
 
-#include <circle/reactive/enable_observe_this.hpp>
 #include <circle/reactive/signal.hpp>
+#include <circle/reactive/tracking_reference.hpp>
 
 #include <functional>
 #include <memory>
@@ -51,7 +51,7 @@ template <typename T>
 using value_provider_ptr = std::unique_ptr<value_provider<T>>;
 
 template <typename T>
-class property : public enable_ref<property<T>>
+class property : public enable_tracking_reference<property<T>>
 {
 public:
     property() = default;
@@ -65,7 +65,7 @@ public:
     ~property() { this->call_before_destroyed(); }
 
     property(property&& other) noexcept
-        : enable_ref<property<T>>{std::move(other)},
+        : enable_tracking_reference<property<T>>{std::move(other)},
           value_{std::move(other.value_)},
           // dirty_{other.dirty_},
           value_changed_{std::move(other.value_changed_)}
@@ -77,7 +77,7 @@ public:
 
     property& operator=(property&& other) noexcept
     {
-        static_cast<enable_ref<property<T>>&>(*this) = std::move(other);
+        enable_tracking_reference<property<T>>::operator=(std::move(other));
         value_ = std::move(other.value_);
         // dirty_ = other.dirty_;
         value_changed_ = std::move(other.value_changed_);
@@ -194,12 +194,15 @@ struct is_property<property<T>> : std::true_type
 };
 
 template <typename T>
-class property_ref : public reference<property<T>>
+class property_ref : public tracking_reference<property<T>>
 {
+    // Aliases doesn't honor CTAD in C++17, so just derive from
+    // tracking_reference
 public:
-    property_ref(property<T>& src) noexcept : reference<property<T>>{src} {}
-
-    operator const T&() const { return *this->get(); }
+    property_ref(property<T>& src) noexcept
+        : tracking_reference<property<T>>{src}
+    {
+    }
 };
 
 } // namespace circle

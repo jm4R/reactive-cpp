@@ -123,7 +123,7 @@ TEST_CASE("property")
     {
         int res{};
         property<int> p1 = 5;
-        p1.moved().connect([&](int val){ res = val; });
+        p1.moved().connect([&](int val) { res = val; });
 
         SECTION("by constructor")
         {
@@ -145,7 +145,7 @@ TEST_CASE("property")
         int res{};
         {
             property<int> p1;
-            p1.before_destroyed().connect([&](int val){ res = val; });
+            p1.before_destroyed().connect([&](int val) { res = val; });
             p1 = 5;
         }
         REQUIRE(res == 5);
@@ -293,29 +293,29 @@ TEST_CASE("property_ref")
 
     property<int> p1 = 5;
     property_ref ref = p1;
-    REQUIRE(ref == 5);
+    REQUIRE(*ref == 5);
 
     SECTION("simple")
     {
         p1 = 10;
-        REQUIRE(ref == 10);
+        REQUIRE(*ref == 10);
         auto p2 = std::move(p1);
         p2 = 15;
-        REQUIRE(ref == 15);
+        REQUIRE(*ref == 15);
         property<int> p3 = 5;
-        REQUIRE(ref == 15);
+        REQUIRE(*ref == 15);
         p3 = std::move(p2);
-        REQUIRE(ref == 15);
+        REQUIRE(*ref == 15);
         p3 = 20;
-        REQUIRE(ref == 20);
+        REQUIRE(*ref == 20);
     }
 
     SECTION("copy")
     {
         property_ref ref2 = ref;
         p1 = 10;
-        REQUIRE(ref == 10);
-        REQUIRE(ref2 == 10);
+        REQUIRE(*ref == 10);
+        REQUIRE(*ref2 == 10);
     }
 
     SECTION("move")
@@ -325,6 +325,6 @@ TEST_CASE("property_ref")
         ref2 = std::move(ref);
         p1 = 10;
         p2 = 200;
-        REQUIRE(ref2 == 10);
+        REQUIRE(*ref2 == 10);
     }
 }
