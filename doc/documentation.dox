@@ -1,0 +1,13 @@
+/*! \file signal.hpp
+    \brief A Documented file.
+    
+    Details.
+*/
+ 
+/*! \class uuu
+    \brief A type definition for a .
+    
+    Details.
+*/
+
+#include "../include/circle/reactive/signal.hpp"
