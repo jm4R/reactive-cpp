@@ -57,7 +57,7 @@ TEST_CASE("almost binding")
     properties_observer obs{a, b};
     long c = a * b;
     obs.set_callback(
-        [&c, a = property_ref{a}, b = property_ref{b}] { c = *a * *b; });
+        [&c, a = property_ptr{&a}, b = property_ptr{&b}] { c = *a * *b; });
     REQUIRE(c == 1);
     a = 2;
     REQUIRE(c == 2);

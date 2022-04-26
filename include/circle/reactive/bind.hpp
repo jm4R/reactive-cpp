@@ -12,7 +12,7 @@ namespace detail {
 template <typename T>
 struct property_deref
 {
-    property_ref<T> ref;
+    property_ptr<T> ref;
     operator const T&() { return *ref; }
 };
 } // namespace detail
@@ -22,7 +22,7 @@ class binding : public value_provider<T>
 {
 public:
     binding(property<Args>&... props, T (*f)(const Args&...))
-        : arguments_{detail::property_deref<Args>{props}...},
+        : arguments_{detail::property_deref<Args>{&props}...},
           function_{f},
           observer_{props...}
     {
