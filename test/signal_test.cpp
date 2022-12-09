@@ -8,6 +8,15 @@ using namespace circle;
 
 static int global_int;
 
+struct base
+{
+    virtual ~base() = default;
+};
+
+struct derived : public base
+{
+};
+
 TEST_CASE("signal")
 {
     static_assert(
@@ -318,6 +327,15 @@ TEST_CASE("signal")
 
         REQUIRE(res1 == "easter");
         REQUIRE(res2 == "easter");
+    }
+
+    SECTION("emitting reference to polymorphic type")
+    {
+        signal<base&> s;
+        derived obj;
+        s.connect(
+            [&](base& v) { REQUIRE(dynamic_cast<derived*>(&v) != nullptr); });
+        s.emit(obj);
     }
 }
 

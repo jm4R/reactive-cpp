@@ -32,7 +32,7 @@ s.emit(-5);
 
 The example prints:
 
-> The num is 2, and now the num is still 2
+> The num is 2, and now the num is still 2\
 > The num is -5, and now the num is still -5
 
 ### circle::property
@@ -48,7 +48,7 @@ p = "bar";
 
 The example prints:
 
-> The text is foo
+> The text is foo\
 > The text is bar
 
 ### circle::binding (BIND)
@@ -73,6 +73,60 @@ The example prints:
 
 > max(60, 75) = 75\
 > max(120, 75) = 120
+
+### circle::enable_tracking_ptr and circle::tracking_ptr
+
+This utility allows tracking object (of class derived from `enable_tracking_ptr`) lifetime. It informs the connected `tracking_ptr` about origin object destruction and address changes (through move operation). The `enable_tracking_ptr` class must implement destructor, move constructor and assignment operator (or `=delete` it). Here's the example:
+
+```cpp
+using namespace circle;
+
+struct tracked_test : public enable_tracking_ptr<tracked_test>
+{
+    using base = enable_tracking_ptr<tracked_test>;
+    tracked_test() = default;
+    ~tracked_test() { this->call_before_destroyed(); }
+
+    tracked_test(tracked_test&& other) : base{std::move(other)}
+    {
+        // all operations comes before
+        this->call_moved();
+    }
+
+    tracked_test& operator=(tracked_test&& other)
+    {
+        base::operator=(std::move(other));
+        // all operations comes before
+        this->call_moved();
+        return *this;
+    }
+};
+
+using test_ptr = tracking_ptr<tracked_test>;
+
+int main()
+{
+    tracked_test obj1;
+    test_ptr p = &obj1;
+    assert(p.get() == &obj1);
+    {
+        tracked_test obj2 = std::move(obj1);
+        assert(p.get() == &obj2);
+    }
+    assert(p.is_dangling());
+    // or
+    assert(p == nullptr);
+    // or
+    assert(!p);
+}
+```
+
+**Note about tracked class inheriance:**
+
+Let's consider `class tracked : public enable_tracking_ptr<tracked> { /*...*/ };` class. We could want to have another level of derived class, eg. `class derived : public tracked`. For given class:
+
+* The derived class will work with `tracking_ptr<tracked>` out of the box.
+* If you want to use also `tracking_ptr<derived>`, you would have to reimplement all the necessary boilerplate (destructor, move constructor and move assignment operator, derive from `enable_tracking_ptr`).
 
 ## Public types
 
@@ -99,3 +153,8 @@ In header `<circle/reactive/bind.hpp>`
 
 * `binding<T, DependentProperties...>`
 * `BIND(dependent_list..., expression)` helper macro
+
+In header `<circle/reactive/tracking_ptr.hpp>`
+
+* `enable_tracking_ptr<tracked_test>` CRTP class
+* `tracking_ptr<Tracked>`
