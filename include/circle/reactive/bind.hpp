@@ -8,12 +8,23 @@
 
 namespace circle {
 
+namespace detail {
+template <typename T>
+struct property_deref
+{
+    property_ptr<T> ref;
+    operator const T&() { return *ref; }
+};
+} // namespace detail
+
 template <typename T, typename... Args>
 class binding : public value_provider<T>
 {
 public:
     binding(property<Args>&... props, T (*f)(const Args&...))
-        : arguments_{props...}, function_{f}, observer_{props...}
+        : arguments_{detail::property_deref<Args>{&props}...},
+          function_{f},
+          observer_{props...}
     {
         observer_.set_callback([this] { updated_(); });
         observer_.set_destroyed_callback([this] { before_invalid_(); });
@@ -40,7 +51,7 @@ public:
 
 private:
     using function_t = T (*)(const Args&...);
-    std::tuple<property_ref<Args>...> arguments_;
+    std::tuple<detail::property_deref<Args>...> arguments_;
     function_t function_;
     properties_observer<property<Args>...> observer_;
     std::function<void()> updated_;

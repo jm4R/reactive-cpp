@@ -118,6 +118,38 @@ TEST_CASE("property")
         p = noncomparable{1, 2};
         REQUIRE(changed);
     }
+
+    SECTION("is up-to-date when moved signal called")
+    {
+        int res{};
+        property<int> p1 = 5;
+        p1.moved().connect([&](int val) { res = val; });
+
+        SECTION("by constructor")
+        {
+            property<int> p2 = std::move(p1);
+            REQUIRE(res == 5);
+        }
+
+        SECTION("by operator=")
+        {
+            property<int> p2;
+            p2 = std::move(p1);
+            REQUIRE(res == 5);
+        }
+    }
+
+    SECTION("is up-to-date when before_destroyed signal called")
+    {
+
+        int res{};
+        {
+            property<int> p1;
+            p1.before_destroyed().connect([&](int val) { res = val; });
+            p1 = 5;
+        }
+        REQUIRE(res == 5);
+    }
 }
 
 struct test_provider final : value_provider<int>
@@ -249,50 +281,50 @@ TEST_CASE("property with value_provider")
 
 TEST_CASE("property_ref")
 {
-    static_assert(std::is_nothrow_constructible_v<property_ref<std::string>,
-                                                  property<std::string>&>);
+    static_assert(std::is_nothrow_constructible_v<property_ptr<std::string>,
+                                                  property<std::string>*>);
     static_assert(
-        std::is_nothrow_move_constructible_v<property_ref<std::string>>);
-    static_assert(std::is_nothrow_move_assignable_v<property_ref<std::string>>);
+        std::is_nothrow_move_constructible_v<property_ptr<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property_ptr<std::string>>);
     static_assert(
-        std::is_nothrow_copy_constructible_v<property_ref<std::string>>);
-    static_assert(std::is_nothrow_copy_assignable_v<property_ref<std::string>>);
-    static_assert(std::is_nothrow_destructible_v<property_ref<std::string>>);
+        std::is_nothrow_copy_constructible_v<property_ptr<std::string>>);
+    static_assert(std::is_nothrow_copy_assignable_v<property_ptr<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property_ptr<std::string>>);
 
     property<int> p1 = 5;
-    property_ref ref = p1;
-    REQUIRE(ref == 5);
+    property_ptr ptr = &p1;
+    REQUIRE(*ptr == 5);
 
     SECTION("simple")
     {
         p1 = 10;
-        REQUIRE(ref == 10);
+        REQUIRE(*ptr == 10);
         auto p2 = std::move(p1);
         p2 = 15;
-        REQUIRE(ref == 15);
+        REQUIRE(*ptr == 15);
         property<int> p3 = 5;
-        REQUIRE(ref == 15);
+        REQUIRE(*ptr == 15);
         p3 = std::move(p2);
-        REQUIRE(ref == 15);
+        REQUIRE(*ptr == 15);
         p3 = 20;
-        REQUIRE(ref == 20);
+        REQUIRE(*ptr == 20);
     }
 
     SECTION("copy")
     {
-        property_ref ref2 = ref;
+        property_ptr ptr2 = ptr;
         p1 = 10;
-        REQUIRE(ref == 10);
-        REQUIRE(ref2 == 10);
+        REQUIRE(*ptr == 10);
+        REQUIRE(*ptr2 == 10);
     }
 
     SECTION("move")
     {
         property<int> p2 = 100;
-        property_ref ref2 = p2;
-        ref2 = std::move(ref);
+        property_ptr ptr2 = &p2;
+        ptr2 = std::move(ptr);
         p1 = 10;
         p2 = 200;
-        REQUIRE(ref2 == 10);
+        REQUIRE(*ptr2 == 10);
     }
 }

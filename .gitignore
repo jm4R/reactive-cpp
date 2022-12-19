@@ -7,3 +7,4 @@
 # Visual Studio:
 /.vs
 /out
+/doc/generated/*

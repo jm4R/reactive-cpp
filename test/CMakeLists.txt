@@ -9,6 +9,7 @@ add_executable(circle-reactive-test
     properties_observer_test.cpp
     property_test.cpp
     signal_test.cpp
+    tracking_ptr_test.cpp
 
     main_test.cpp
 )
