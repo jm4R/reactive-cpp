@@ -51,7 +51,7 @@ template <typename T>
 using value_provider_ptr = std::unique_ptr<value_provider<T>>;
 
 template <typename T>
-class property : public enable_tracking_ptr<property<T>>
+class property final : public enable_tracking_ptr<property<T>>
 {
 public:
     property() = default;
@@ -182,6 +182,7 @@ private:
     scoped_connection provider_observer_;
     signal<property&> value_changed_;
 };
+
 
 template <typename T>
 struct is_property : std::false_type

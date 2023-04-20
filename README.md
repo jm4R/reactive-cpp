@@ -19,7 +19,9 @@ Property binding library with lazy value evaluation.
 
 Library needs a deeper documentation, but here's a demo:
 
-### circle::signal
+### Basic types
+
+#### circle::signal
 
 ```cpp
 using namespace circle;
@@ -35,7 +37,7 @@ The example prints:
 > The num is 2, and now the num is still 2\
 > The num is -5, and now the num is still -5
 
-### circle::property
+#### circle::property
 
 ```cpp
 using namespace circle;
@@ -51,7 +53,7 @@ The example prints:
 > The text is foo\
 > The text is bar
 
-### circle::binding (BIND)
+#### circle::binding (BIND)
 
 ```cpp
 using namespace circle;
@@ -74,7 +76,12 @@ The example prints:
 > max(60, 75) = 75\
 > max(120, 75) = 120
 
-### circle::enable_tracking_ptr and circle::tracking_ptr
+
+### Detailed types
+
+When creating a binding, we often encounter the requirement that some object must be alive (eg. not dangling) to be sure that binding is valid. The `std::weak_ptr` could be used in some cases, but it will never guarantee that the binding is fully invalidated, we can only use its state inside a binding logic. It might be more convenient to use following utilities:
+
+#### circle::enable_tracking_ptr and circle::tracking_ptr
 
 This utility allows tracking object (of class derived from `enable_tracking_ptr`) lifetime. It informs the connected `tracking_ptr` about origin object destruction and address changes (through move operation). The `enable_tracking_ptr` class must implement destructor, move constructor and assignment operator (or `=delete` it). Here's the example:
 
@@ -121,12 +128,42 @@ int main()
 }
 ```
 
-**Note about tracked class inheriance:**
+The `property<T>` and `property_ptr<T>` can be treated like `enable_tracking_ptr<property>` and `tracking_ptr<property<T>>` in most contexts: it has the same behavior but additional `value_changed` signal that triggers binding update and is dereferenced directly to `const T&` (instead of `const property<T>&`) by binding logic.
+
+**Note about tracked class inheritance:**
 
 Let's consider `class tracked : public enable_tracking_ptr<tracked> { /*...*/ };` class. We could want to have another level of derived class, eg. `class derived : public tracked`. For given class:
 
 * The derived class will work with `tracking_ptr<tracked>` out of the box.
 * If you want to use also `tracking_ptr<derived>`, you would have to reimplement all the necessary boilerplate (destructor, move constructor and move assignment operator, derive from `enable_tracking_ptr`).
+
+#### circle::observer
+The `observer<N>` utility is a kind of generalization of `tracking_ptr` for multiple (N) trackable objects. It also detects if underlying pointers has `value_changed` special signal and reports it when necessary. It is used internally by `binding` objects but can be used as a separate utility. Here's the example:
+
+```cpp
+    property<int> a = 1;
+    property<long> b = 1;
+    observer obs{&a, &b};
+    long c = a * b;
+
+    // value callback:
+    obs.set_callback(
+        [&c, a = property_ptr{&a}, b = property_ptr{&b}] { c = *a * *b; });
+    assert(c == 1);
+    a = 2;
+    assert(c == 2);
+
+    // destroyed callback:
+    bool destroyed{};
+    obs.set_destroyed_callback([&]{ destroyed = true; });
+    assert(!destroyed);
+
+    {
+        auto b3 = std::move(b2);
+    }
+
+    assert(destroyed);
+```
 
 ## Public types
 
@@ -145,13 +182,13 @@ In header `<circle/reactive/property.hpp>`
 * `value_provider_ptr` alias
 * `is_property<T>` type trait
 
-In header `<circle/reactive/properties_observer.hpp>`
+In header `<circle/reactive/observer.hpp>`
 
-* `properties_observer<Properties...>`
+* `observer<N>`
 
 In header `<circle/reactive/bind.hpp>`
 
-* `binding<T, DependentProperties...>`
+* `binding<T, DependentPropertiesOrTrackables...>`
 * `BIND(dependent_list..., expression)` helper macro
 
 In header `<circle/reactive/tracking_ptr.hpp>`

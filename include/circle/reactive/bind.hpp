@@ -1,6 +1,6 @@
 #pragma once
 
-#include <circle/reactive/properties_observer.hpp>
+#include <circle/reactive/observer.hpp>
 #include <circle/reactive/property.hpp>
 
 #include <memory>
@@ -10,21 +10,54 @@ namespace circle {
 
 namespace detail {
 template <typename T>
-struct property_deref
+struct tracking_trait
 {
-    property_ptr<T> ref;
-    operator const T&() { return *ref; }
+    template <typename T1>
+    static T1 test_element(const enable_tracking_ptr<T1>&)
+    {
+    }
+    template <typename T1>
+    static T1 test_element(const property<T1>&)
+    {
+    }
+
+    template <typename T1>
+    static tracking_ptr<T1> test_ptr(const enable_tracking_ptr<T1>&)
+    {
+    }
+    template <typename T1>
+    static property_ptr<T1> test_ptr(const property<T1>&)
+    {
+    }
+
+    using element_type = decltype(test_element(std::declval<T>()));
+    using ptr_type = decltype(test_ptr(std::declval<T>()));
 };
+
+template <typename T>
+using tt = typename tracking_trait<T>::element_type;
+
+template <typename T>
+struct tracking_deref
+{
+    using element_type = typename tracking_trait<T>::element_type;
+    using ptr_type = typename tracking_trait<T>::ptr_type;
+
+    tracking_deref(T* v) : ptr{v} {}
+    ptr_type ptr;
+    operator const element_type&() { return *ptr; }
+};
+
 } // namespace detail
 
 template <typename T, typename... Args>
 class binding : public value_provider<T>
 {
 public:
-    binding(property<Args>&... props, T (*f)(const Args&...))
-        : arguments_{detail::property_deref<Args>{&props}...},
+    binding(Args&... props, T (*f)(const detail::tt<Args>&...))
+        : arguments_{detail::tracking_deref<Args>{&props}...},
           function_{f},
-          observer_{props...}
+          observer_{&props...}
     {
         observer_.set_callback([this] { updated_(); });
         observer_.set_destroyed_callback([this] { before_invalid_(); });
@@ -50,10 +83,10 @@ public:
     T get() override { return std::apply(function_, arguments_); }
 
 private:
-    using function_t = T (*)(const Args&...);
-    std::tuple<detail::property_deref<Args>...> arguments_;
+    using function_t = T (*)(const detail::tt<Args>&...);
+    std::tuple<detail::tracking_deref<Args>...> arguments_;
     function_t function_;
-    properties_observer<property<Args>...> observer_;
+    observer<sizeof...(Args)> observer_;
     std::function<void()> updated_;
     std::function<void()> before_invalid_;
 };
@@ -62,7 +95,7 @@ template <typename T, typename... Args>
 using binding_ptr = std::unique_ptr<binding<T, Args...>>;
 
 template <typename T, typename... Args>
-inline auto make_binding(T (*f)(const Args&...), property<Args>&... props)
+inline auto make_binding(T (*f)(const detail::tt<Args>&...), Args&... props)
     -> value_provider_ptr<T>
 {
     return std::make_unique<binding<T, Args...>>(props..., f);
@@ -133,7 +166,7 @@ inline auto make_binding(T (*f)(const Args&...), property<Args>&... props)
 #define CIRCLE_IDENTITIES(...)                                                 \
     CIRCLE_FOLD(CIRCLE_IDENTITY, CIRCLE_IGNORE, __VA_ARGS__)
 
-#define CIRCLE_DECLTYPE_ARG(x) decltype(x.get()) x
+#define CIRCLE_DECLTYPE_ARG(x) const typename detail::tt<decltype(x)>& x
 #define CIRCLE_DECLTYPE_ARGS(...)                                              \
     CIRCLE_FOLD(CIRCLE_DECLTYPE_ARG, CIRCLE_IGNORE, __VA_ARGS__)
 

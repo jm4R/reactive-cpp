@@ -458,6 +458,16 @@ private:
     connection c_;
 };
 
+template <typename... Args>
+struct is_signal : std::false_type
+{
+};
+
+template <typename... Args>
+struct is_signal<signal<Args...>> : std::true_type
+{
+};
+
 } // namespace circle
 
 #undef CIRCLE_WARN
