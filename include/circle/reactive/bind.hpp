@@ -94,11 +94,20 @@ private:
 template <typename T, typename... Args>
 using binding_ptr = std::unique_ptr<binding<T, Args...>>;
 
-template <typename T, typename... Args>
-inline auto make_binding(T (*f)(const detail::tt<Args>&...), Args&... props)
-    -> value_provider_ptr<T>
+// This won't work with MSVC :(
+//template <typename T, typename... Args>
+//inline auto make_binding(T (*f)(const detail::tt<Args>&...), Args&... props)
+//    -> value_provider_ptr<T>
+//{
+//    return std::make_unique<binding<T, Args...>>(props..., f);
+//}
+
+template <typename F, typename... Args>
+inline auto make_binding(F* f, Args&... props)
 {
-    return std::make_unique<binding<T, Args...>>(props..., f);
+    using R = std::invoke_result_t<F, const detail::tt<Args>&...>;
+    using B = value_provider_ptr<R>;
+    return static_cast<B&&>(std::make_unique<binding<R, Args...>>(props..., f));
 }
 
 // workaround for old msvc preprocessor:
