@@ -114,7 +114,7 @@ TEST_CASE("binding")
         REQUIRE(global_int == 22);
     }
 
-    SECTION("use tracking_ptr")
+    SECTION("use enable_tracking_ptr")
     {
         {
             tracked_test ttt;
@@ -124,6 +124,27 @@ TEST_CASE("binding")
                 },
                 ttt, a, b);
             c = BIND(ttt, a, b, std::max(a, b));
+
+            b = 110;
+            REQUIRE(c == 110);
+        }
+
+        a = 200;
+        b = 200;
+        REQUIRE(c == 110);
+    }
+
+    SECTION("use tracking_ptr")
+    {
+        {
+            tracked_test ttt;
+            test_ptr ppp = &ttt;
+            c = make_binding(
+                +[](const tracked_test& ttt, const int& a, const int& b) {
+                    return std::max(a, b);
+                },
+                ppp, a, b);
+            c = BIND(ppp, a, b, std::max(a, b));
 
             b = 110;
             REQUIRE(c == 110);

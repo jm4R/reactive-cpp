@@ -13,25 +13,44 @@ template <typename T>
 struct tracking_trait
 {
     template <typename T1>
-    static T1 test_element(const enable_tracking_ptr<T1>&)
+    static T1 element(const enable_tracking_ptr<T1>&)
     {
     }
     template <typename T1>
-    static T1 test_element(const property<T1>&)
+    static T1 element(const tracking_ptr<T1>&)
+    {
+    }
+    template <typename T1>
+    static T1 element(const property<T1>&)
     {
     }
 
     template <typename T1>
-    static tracking_ptr<T1> test_ptr(const enable_tracking_ptr<T1>&)
+    static tracking_ptr<T1> ptr(enable_tracking_ptr<T1>& v)
     {
     }
     template <typename T1>
-    static property_ptr<T1> test_ptr(const property<T1>&)
+    static tracking_ptr<T1> ptr(tracking_ptr<T1>& v)
+    {
+    }
+    template <typename T1>
+    static property_ptr<T1> ptr(property<T1>& v)
     {
     }
 
-    using element_type = decltype(test_element(std::declval<T>()));
-    using ptr_type = decltype(test_ptr(std::declval<T>()));
+    template <typename T1>
+    static T1* make_ptr(T1& v)
+    {
+        return &v;
+    }
+    template <typename T1>
+    static tracking_ptr<T1>& make_ptr(tracking_ptr<T1>& v)
+    {
+        return v;
+    }
+
+    using element_type = decltype(element(std::declval<T>()));
+    using ptr_type = decltype(ptr(std::declval<T&>()));
 };
 
 template <typename T>
@@ -43,7 +62,7 @@ struct tracking_deref
     using element_type = typename tracking_trait<T>::element_type;
     using ptr_type = typename tracking_trait<T>::ptr_type;
 
-    tracking_deref(T* v) : ptr{v} {}
+    tracking_deref(T& v) : ptr{tracking_trait<T>::make_ptr(v)} {}
     ptr_type ptr;
     operator const element_type&() { return *ptr; }
 };
@@ -55,9 +74,9 @@ class binding : public value_provider<T>
 {
 public:
     binding(Args&... props, T (*f)(const detail::tt<Args>&...))
-        : arguments_{detail::tracking_deref<Args>{&props}...},
+        : arguments_{detail::tracking_deref<Args>{props}...},
           function_{f},
-          observer_{&props...}
+          observer_{detail::tracking_trait<Args>::make_ptr(props)...}
     {
         observer_.set_callback([this] { updated_(); });
         observer_.set_destroyed_callback([this] { before_invalid_(); });
