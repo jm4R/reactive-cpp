@@ -10,10 +10,12 @@
 #include <vector>
 
 #ifdef NDEBUG
-#    define CIRCLE_WARN(res, reason) (res)
+#    define CIRCLE_WARN(reason)
+#    define CIRCLE_WARN_VAL(res, reason) (res)
 #else
 #    include <cstdio>
-#    define CIRCLE_WARN(res, reason)                                           \
+#    define CIRCLE_WARN(reason) fputs("WARNING: " reason "\n", stderr)
+#    define CIRCLE_WARN_VAL(res, reason)                                       \
         (fputs("WARNING: " reason "\n", stderr), res)
 #endif
 
@@ -218,10 +220,10 @@ public:
         if (auto c = find(connection_id))
         {
             if (!active(*c))
-                return CIRCLE_WARN(true, "Blocking inactive connection");
+                return CIRCLE_WARN_VAL(true, "Blocking inactive connection");
             return std::exchange(c->blocked, val);
         }
-        return CIRCLE_WARN(true, "Blocking inactive connection");
+        return CIRCLE_WARN_VAL(true, "Blocking inactive connection");
     }
 
     [[nodiscard]] bool blocked(id connection_id) const noexcept override
@@ -229,11 +231,11 @@ public:
         if (auto c = find(connection_id))
         {
             if (!c->slot || c->lazy_disconnect)
-                return CIRCLE_WARN(true,
-                                   "Checking inactive connection if blocked");
+                return CIRCLE_WARN_VAL(
+                    true, "Checking inactive connection if blocked");
             return c->blocked;
         }
-        return CIRCLE_WARN(true, "Checking inactive connection if blocked");
+        return CIRCLE_WARN_VAL(true, "Checking inactive connection if blocked");
     }
 
 private:
@@ -298,7 +300,7 @@ public:
         {
             return s->block(id_, val);
         }
-        return CIRCLE_WARN(true, "Blocking inactive connection");
+        return CIRCLE_WARN_VAL(true, "Blocking inactive connection");
     }
 
     [[nodiscard]] bool blocked() const noexcept
@@ -307,7 +309,7 @@ public:
         {
             return s->blocked(id_);
         }
-        return CIRCLE_WARN(true, "Checking inactive connection if blocked");
+        return CIRCLE_WARN_VAL(true, "Checking inactive connection if blocked");
     }
 
 private:
@@ -328,8 +330,7 @@ public:
     connection_blocker(connection c) noexcept : connection_{c}
     {
         if (!c.active())
-            CIRCLE_WARN(true,
-                        "Creating connection_blocker on inactive connection");
+            CIRCLE_WARN("Creating connection_blocker on inactive connection");
         was_ = c.block(true);
     }
 
