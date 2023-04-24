@@ -102,16 +102,15 @@ TEST_CASE("binding")
         REQUIRE(*str == std::string{"max(60, 75) = 75"});
     }
 
-    SECTION("lazy evaluation")
+    SECTION("non-lazy evaluation")
     {
         global_int = 0;
         c = BIND(a, b, global_int = a + b);
         a = 18;
         b = 4;
 
-        REQUIRE(global_int == 0);
-        REQUIRE(c == 22);
         REQUIRE(global_int == 22);
+        REQUIRE(c == 22);
     }
 
     SECTION("use enable_tracking_ptr")

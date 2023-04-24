@@ -67,7 +67,6 @@ public:
     property(property&& other) noexcept
         : enable_tracking_ptr<property<T>>{std::move(other)},
           value_{std::move(other.value_)},
-          // dirty_{other.dirty_},
           value_changed_{std::move(other.value_changed_)}
     {
         other.provider_observer_.disconnect();
@@ -79,7 +78,6 @@ public:
     {
         enable_tracking_ptr<property<T>>::operator=(std::move(other));
         value_ = std::move(other.value_);
-        // dirty_ = other.dirty_;
         value_changed_ = std::move(other.value_changed_);
 
         other.provider_observer_.disconnect();
@@ -102,6 +100,7 @@ public:
 
     bool assign(T value)
     {
+        detach();
         if (!detail::eq(value, value_))
         {
             value_ = std::move(value);
@@ -121,11 +120,10 @@ public:
         {
             provider_ = std::move(provider);
             provider_->set_updated_callback([this] {
-                dirty_ = true;
+                materialize();
                 value_changed_.emit(*this);
             });
             provider_->set_before_invalid_callback([this] { detach(); });
-            dirty_ = true;
             if (materialize())
             {
                 value_changed_.emit(*this);
@@ -137,7 +135,6 @@ public:
 
     bool detach()
     {
-        materialize();
         if (provider_)
         {
             provider_observer_.disconnect();
@@ -162,9 +159,8 @@ public:
 private:
     bool materialize() const
     {
-        if (provider_ && dirty_)
+        if (provider_)
         {
-            dirty_ = false;
             auto new_value = provider_->get();
             if (!detail::eq(new_value, value_))
             {
@@ -178,7 +174,6 @@ private:
 private:
     T value_{};
     mutable value_provider_ptr<T> provider_;
-    mutable bool dirty_{};
     scoped_connection provider_observer_;
     signal<property&> value_changed_;
 };

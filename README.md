@@ -15,7 +15,7 @@ Branch          | Appveyor | Codecov |
 
 ## Introduction
 
-Property binding library with lazy value evaluation.
+C++ property binding library.
 
 Library needs a deeper documentation, but here's a demo:
 
