@@ -238,52 +238,50 @@ inline auto make_binding(F* f, Args&... props)
  * - BIND expands to:
  * BIND_IMPL(
  *   CIRCLE_FOLD(CIRCLE_MAKE_TUPLES, CIRCLE_ADD_PARAM, arg1, (arg2, name2),
- * expr)
+ *               expr)
  * )
  *
  * - CIRCLE_FOLD & CIRCLE_MAKE_TUPLES expands to:
  * BIND_IMPL(
  *   CIRCLE_IF_TUPLE(arg1, CIRCLE_IDENTITY, CIRCLE_MAKE_IDENTITY_TUPLE),
  *   CIRCLE_IF_TUPLE((arg2, name2), CIRCLE_IDENTITY,
- * CIRCLE_MAKE_IDENTITY_TUPLE), expr
- *   )
+ *                   CIRCLE_MAKE_IDENTITY_TUPLE),
+ *   expr
  * )
  *
  * - CIRCLE_IF_TUPLE expands to:
  * BIND_IMPL(
  *   CIRCLE_CHOOSE_FOR_TUPLE(
- *     arg1,
  *     CIRCLE_UNPACK_IF_PAIR arg1,
  *     CIRCLE_IDENTITY,
- *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *     CIRCLE_MAKE_IDENTITY_TUPLE,
+ *     0
  *   )(arg1),
  *   CIRCLE_CHOOSE_FOR_TUPLE(
- *     (arg2, name2),
  *     CIRCLE_UNPACK_IF_PAIR(arg2, name2),
  *     CIRCLE_IDENTITY,
- *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *     CIRCLE_MAKE_IDENTITY_TUPLE,
+ *     0
  *   )((arg2, name2)),
  *   expr
- *   )
  * )
  *
  * - CIRCLE_UNPACK_IF_PAIR expands to:
  * BIND_IMPL(
  *   CIRCLE_CHOOSE_FOR_TUPLE(
- *     arg1,
  *     CIRCLE_UNPACK_IF_PAIR arg1,
  *     CIRCLE_IDENTITY,
- *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *     CIRCLE_MAKE_IDENTITY_TUPLE,
+ *     0
  *   )(arg1),
  *   CIRCLE_CHOOSE_FOR_TUPLE(
- *     (arg2, name2),
  *     arg2,
  *     name2,
  *     CIRCLE_IDENTITY,
- *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *     CIRCLE_MAKE_IDENTITY_TUPLE,
+ *     0
  *   )((arg2, name2)),
  *   expr
- *   )
  * )
  *
  * - CIRCLE_CHOOSE_FOR_TUPLE expands to:
@@ -291,7 +289,6 @@ inline auto make_binding(F* f, Args&... props)
  *   CIRCLE_MAKE_IDENTITY_TUPLE (arg1),
  *   CIRCLE_IDENTITY((arg2, name2)),
  *   expr
- *   )
  * )
  *
  * - CIRCLE_MAKE_IDENTITY_TUPLE & CIRCLE_IDENTITY expands to:
@@ -299,7 +296,6 @@ inline auto make_binding(F* f, Args&... props)
  *   (arg1, arg1),
  *   (arg2, name2),
  *   expr
- *   )
  * )
  *
  * - BIND_IMPL expands to:
