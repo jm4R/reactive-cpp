@@ -217,7 +217,8 @@ inline auto make_binding(F* f, Args&... props)
 #define CIRCLE_CHOOSE_FOR_TUPLE_IMPL(arg1, arg2_or_tuple_macro,                \
                                      tuple_or_non_tuple_macro, ...)            \
     tuple_or_non_tuple_macro
-#define CIRCLE_CHOOSE_FOR_TUPLE(...) CIRCLE_CHOOSE_FOR_TUPLE_IMPL(__VA_ARGS__)
+#define CIRCLE_CHOOSE_FOR_TUPLE(...)                                           \
+    CIRCLE_MSVC_EXP(CIRCLE_CHOOSE_FOR_TUPLE_IMPL(__VA_ARGS__))
 #define CIRCLE_IF_TUPLE(v, tuple_macro, non_tuple_macro)                       \
     CIRCLE_CHOOSE_FOR_TUPLE(CIRCLE_UNPACK_IF_PAIR v, tuple_macro,              \
                             non_tuple_macro, 0)                                \
