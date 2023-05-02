@@ -31,6 +31,13 @@ struct tracked_test : public enable_tracking_ptr<tracked_test>
 
 using test_ptr = tracking_ptr<tracked_test>;
 
+struct test_struct
+{
+    property<int> test_member1;
+    property<int> test_member2;
+    inline static property<int> test_static_member;
+};
+
 TEST_CASE("binding")
 {
     static_assert(
@@ -152,5 +159,22 @@ TEST_CASE("binding")
         a = 200;
         b = 200;
         REQUIRE(c == 110);
+    }
+
+    SECTION("custom name parameters")
+    {
+        test_struct obj;
+        test_struct* ptr = &obj;
+        property<int> sum =
+            BIND((obj.test_member1, arg1), (ptr->test_member2, arg2),
+                 (test_struct::test_static_member, arg3), arg1 + arg2 + arg3);
+
+        REQUIRE(sum == 0);
+        obj.test_member1 = 1;
+        REQUIRE(sum == 1);
+        ptr->test_member2 = 10;
+        REQUIRE(sum == 11);
+        test_struct::test_static_member = 100;
+        REQUIRE(sum == 111);
     }
 }

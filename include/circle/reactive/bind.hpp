@@ -114,8 +114,8 @@ template <typename T, typename... Args>
 using binding_ptr = std::unique_ptr<binding<T, Args...>>;
 
 // This won't work with MSVC :(
-//template <typename T, typename... Args>
-//inline auto make_binding(T (*f)(const detail::tt<Args>&...), Args&... props)
+// template <typename T, typename... Args>
+// inline auto make_binding(T (*f)(const detail::tt<Args>&...), Args&... props)
 //    -> value_provider_ptr<T>
 //{
 //    return std::make_unique<binding<T, Args...>>(props..., f);
@@ -189,23 +189,131 @@ inline auto make_binding(F* f, Args&... props)
         CIRCLE_FE_2, CIRCLE_FE_1, CIRCLE_FE_0)(action, last, __VA_ARGS__))
 
 #define CIRCLE_IGNORE(x)
-
 #define CIRCLE_IDENTITY(x) x
-#define CIRCLE_IDENTITIES(...)                                                 \
-    CIRCLE_FOLD(CIRCLE_IDENTITY, CIRCLE_IGNORE, __VA_ARGS__)
+#define CIRCLE_ADD_PARAM(x) , x
 
-#define CIRCLE_DECLTYPE_ARG(x) const typename detail::tt<decltype(x)>& x
+#define CIRCLE_TAKE_VALUE2(val, name) val
+#define CIRCLE_TAKE_VALUE1(tuple) CIRCLE_TAKE_VALUE2 tuple
+#define CIRCLE_TAKE_VALUES(...)                                                \
+    CIRCLE_FOLD(CIRCLE_TAKE_VALUE1, CIRCLE_IGNORE, __VA_ARGS__)
+
+#define CIRCLE_DECLTYPE_ARG2(val, name)                                        \
+    const typename detail::tt<decltype(val)>& name
+#define CIRCLE_DECLTYPE_ARG1(tuple) CIRCLE_DECLTYPE_ARG2 tuple
 #define CIRCLE_DECLTYPE_ARGS(...)                                              \
-    CIRCLE_FOLD(CIRCLE_DECLTYPE_ARG, CIRCLE_IGNORE, __VA_ARGS__)
+    CIRCLE_FOLD(CIRCLE_DECLTYPE_ARG1, CIRCLE_IGNORE, __VA_ARGS__)
 
 #define CIRCLE_GET_LAST(...)                                                   \
     CIRCLE_FOR_EACH(CIRCLE_IGNORE, CIRCLE_IDENTITY, __VA_ARGS__)
 
-#define BIND(...)                                                              \
+#define BIND_IMPL(...)                                                         \
     make_binding(                                                              \
         +[](CIRCLE_DECLTYPE_ARGS(__VA_ARGS__)) {                               \
             return CIRCLE_GET_LAST(__VA_ARGS__);                               \
         },                                                                     \
-        CIRCLE_IDENTITIES(__VA_ARGS__));
+        CIRCLE_TAKE_VALUES(__VA_ARGS__));
 
+#define CIRCLE_UNPACK_IF_PAIR(x, y) x, y
+#define CIRCLE_CHOOSE_FOR_TUPLE_IMPL(arg1, arg2_or_tuple_macro,                \
+                                     tuple_or_non_tuple_macro, ...)            \
+    tuple_or_non_tuple_macro
+#define CIRCLE_CHOOSE_FOR_TUPLE(...) CIRCLE_CHOOSE_FOR_TUPLE_IMPL(__VA_ARGS__)
+#define CIRCLE_IF_TUPLE(v, tuple_macro, non_tuple_macro)                       \
+    CIRCLE_CHOOSE_FOR_TUPLE(CIRCLE_UNPACK_IF_PAIR v, tuple_macro,              \
+                            non_tuple_macro, 0)                                \
+    (v)
+
+#define CIRCLE_MAKE_IDENTITY_TUPLE(x) (x, x)
+#define CIRCLE_MAKE_TUPLES(x)                                                  \
+    CIRCLE_IF_TUPLE(x, CIRCLE_IDENTITY, CIRCLE_MAKE_IDENTITY_TUPLE)
+#define BIND(...)                                                              \
+    BIND_IMPL(CIRCLE_FOLD(CIRCLE_MAKE_TUPLES, CIRCLE_ADD_PARAM, __VA_ARGS__))
+
+/* BIND macro resolution steps:
+ *
+ * -example:
+ * BIND(arg1, (arg2, name2), expr)
+ *
+ * - BIND expands to:
+ * BIND_IMPL(
+ *   CIRCLE_FOLD(CIRCLE_MAKE_TUPLES, CIRCLE_ADD_PARAM, arg1, (arg2, name2),
+ * expr)
+ * )
+ *
+ * - CIRCLE_FOLD & CIRCLE_MAKE_TUPLES expands to:
+ * BIND_IMPL(
+ *   CIRCLE_IF_TUPLE(arg1, CIRCLE_IDENTITY, CIRCLE_MAKE_IDENTITY_TUPLE),
+ *   CIRCLE_IF_TUPLE((arg2, name2), CIRCLE_IDENTITY,
+ * CIRCLE_MAKE_IDENTITY_TUPLE), expr
+ *   )
+ * )
+ *
+ * - CIRCLE_IF_TUPLE expands to:
+ * BIND_IMPL(
+ *   CIRCLE_CHOOSE_FOR_TUPLE(
+ *     arg1,
+ *     CIRCLE_UNPACK_IF_PAIR arg1,
+ *     CIRCLE_IDENTITY,
+ *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *   )(arg1),
+ *   CIRCLE_CHOOSE_FOR_TUPLE(
+ *     (arg2, name2),
+ *     CIRCLE_UNPACK_IF_PAIR(arg2, name2),
+ *     CIRCLE_IDENTITY,
+ *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *   )((arg2, name2)),
+ *   expr
+ *   )
+ * )
+ *
+ * - CIRCLE_UNPACK_IF_PAIR expands to:
+ * BIND_IMPL(
+ *   CIRCLE_CHOOSE_FOR_TUPLE(
+ *     arg1,
+ *     CIRCLE_UNPACK_IF_PAIR arg1,
+ *     CIRCLE_IDENTITY,
+ *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *   )(arg1),
+ *   CIRCLE_CHOOSE_FOR_TUPLE(
+ *     (arg2, name2),
+ *     arg2,
+ *     name2,
+ *     CIRCLE_IDENTITY,
+ *     CIRCLE_MAKE_IDENTITY_TUPLE
+ *   )((arg2, name2)),
+ *   expr
+ *   )
+ * )
+ *
+ * - CIRCLE_CHOOSE_FOR_TUPLE expands to:
+ * BIND_IMPL(
+ *   CIRCLE_MAKE_IDENTITY_TUPLE (arg1),
+ *   CIRCLE_IDENTITY((arg2, name2)),
+ *   expr
+ *   )
+ * )
+ *
+ * - CIRCLE_MAKE_IDENTITY_TUPLE & CIRCLE_IDENTITY expands to:
+ * BIND_IMPL(
+ *   (arg1, arg1),
+ *   (arg2, name2),
+ *   expr
+ *   )
+ * )
+ *
+ * - BIND_IMPL expands to:
+ * make_binding(
+ *   +[]
+ *   (
+ *     const typename detail::tt<decltype(arg1)>& arg1,
+ *     const typename detail::tt<decltype(arg2)>& name2
+ *   )
+ *   {
+ *     return expr;
+ *   },
+ *   arg1,
+ *   arg2
+ * );
+ *
+ * */
 } // namespace circle

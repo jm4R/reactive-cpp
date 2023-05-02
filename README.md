@@ -61,7 +61,7 @@ using namespace circle;
 property<int> a = 0;
 property<int> b = 0;
 
-property max = BIND(a, b, std::max(a, b));
+property max = BIND(a, b, std::max(a, b)); // simple version
 
 a = 60;
 b = 75;
@@ -69,6 +69,13 @@ std::cout << "max(" << *a  << ", " << *b << ") = " << *max << std::endl;
 
 a = 120;
 std::cout << "max(" << *a  << ", " << *b << ") = " << *max << std::endl;
+
+struct
+{
+    property<int> val;
+} nested;
+
+property max = BIND(a, (nested.val, nested_val), std::max(a, nested_val)); // or name parameter explicitly
 ```
 
 The example prints:
