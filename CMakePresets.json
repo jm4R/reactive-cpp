@@ -1,0 +1,78 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base-debug",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "OFF"
+      }
+    },
+    {
+      "name": "base-release",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "base-debug"
+    },
+    {
+      "name": "release",
+      "inherits": "base-release"
+    },
+    {
+      "name": "ci-g++-7",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++7",
+        "REACTIVE_CPP_COVERAGE": "ON"
+      }
+    },
+    {
+      "name": "ci-clang++-9",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++-9"
+      }
+    },
+    {
+      "name": "ci-coverage",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++-9",
+        "REACTIVE_CPP_COVERAGE": "ON"
+      }
+    },
+    {
+      "name": "wasm-debug",
+      "inherits": "base-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchain/wasm.cmake"
+    },
+    {
+      "name": "wasm-release",
+      "inherits": "base-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchain/wasm.cmake"
+    },
+    {
+      "name": "wasm-standalone-debug",
+      "inherits": "base-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchain/wasm-standalone.cmake"
+    },
+    {
+      "name": "wasm-standalone-release",
+      "inherits": "base-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchain/wasm-standalone.cmake"
+    }
+  ]
+}
