@@ -47,6 +47,15 @@
       }
     },
     {
+      "name": "ci-ubsan",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-fsanitize=undefined -fno-sanitize-recover=all",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined -fno-sanitize-recover=all"
+      }
+    },
+    {
       "name": "ci-coverage",
       "inherits": "debug",
       "cacheVariables": {

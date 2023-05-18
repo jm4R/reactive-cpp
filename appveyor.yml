@@ -50,6 +50,10 @@ before_build:
     clang++-9 --version
     cmake -S . --preset=ci-clang++-9
 
+    echo && echo "------- UNDERINED BEHAVIOR SANITIZER PROJECT GENERATION -------"
+    clang++ --version
+    cmake -S . --preset=ci-ubsan
+
     echo && echo "------- EMSCRIPTEN PROJECT GENERATION -------"
     $EMSDK/upstream/emscripten/emcc -v
     cmake -S . --preset=wasm-debug
@@ -66,6 +70,8 @@ build_script:
     cmake --build build/ci-g++-7
     echo && echo "------- CLANG BUILD -------"
     cmake --build build/ci-clang++-9
+    echo && echo "------- UNDERINED BEHAVIOR SANITIZER BUILD -------"
+    cmake --build build/ci-ubsan
     echo && echo "------- EMSCRIPTEN BUILD -------"
     cmake --build build/wasm-debug
     echo && echo "------- COVERAGE BUILD -------"
@@ -78,6 +84,7 @@ test_script:
 - sh: |-
     echo && echo "------- GCC BUILD TEST -------" && ./build/ci-g++7/test/circle-reactive-test
     echo && echo "------- CLANG BUILD TEST -------" && ./build/ci-clang++-9/test/circle-reactive-test
+    echo && echo "------- UNDERINED BEHAVIOR SANITIZER RUN -------" && ./build/ci-ubsan/test/circle-reactive-test
     echo && echo "------- EMSCRIPTEN BUILD TEST -------" && node ./build/wasm-debug/test/circle-reactive-test
 
 on_success:
