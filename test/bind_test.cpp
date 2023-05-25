@@ -61,7 +61,7 @@ TEST_CASE("binding")
         REQUIRE(c == 1300);
     }
 
-    SECTION("macro")
+    SECTION("BIND macro")
     {
         c = BIND(a, b, std::max(a, b) * 2);
         a = 8;
@@ -176,5 +176,13 @@ TEST_CASE("binding")
         REQUIRE(sum == 11);
         test_struct::test_static_member = 100;
         REQUIRE(sum == 111);
+    }
+
+    SECTION("BIND_EQ macro")
+    {
+        test_struct obj;
+        c = BIND_EQ(obj.test_member1);
+        obj.test_member1 = 8;
+        REQUIRE(c == 8);
     }
 }

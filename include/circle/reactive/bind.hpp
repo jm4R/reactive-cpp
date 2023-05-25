@@ -229,6 +229,7 @@ inline auto make_binding(F* f, Args&... props)
     CIRCLE_IF_TUPLE(x, CIRCLE_IDENTITY, CIRCLE_MAKE_IDENTITY_TUPLE)
 #define BIND(...)                                                              \
     BIND_IMPL(CIRCLE_FOLD(CIRCLE_MAKE_TUPLES, CIRCLE_ADD_PARAM, __VA_ARGS__))
+#define BIND_EQ(x) BIND((x, n), n)
 
 /* BIND macro resolution steps:
  *
