@@ -248,6 +248,8 @@ TEST_CASE("signal")
         auto s2 = std::move(s1);
         s2.emit(5);
         REQUIRE(res == 5);
+        s1.emit(10);
+        REQUIRE(res == 5);
     }
 
     SECTION("move assignment operator")
