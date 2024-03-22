@@ -1,7 +1,6 @@
 #pragma once
 
 #include <circle/reactive/signal.hpp>
-#include <circle/reactive/tracking_ptr.hpp>
 
 #include <functional>
 #include <memory>
@@ -51,9 +50,11 @@ template <typename T>
 using value_provider_ptr = std::unique_ptr<value_provider<T>>;
 
 template <typename T>
-class property final : public enable_tracking_ptr<property<T>>
+class property
 {
 public:
+    using value_type = T;
+
     property() = default;
 
     property(T value) noexcept : value_{std::move(value)} {}
@@ -62,27 +63,34 @@ public:
     property(const property&) = delete;
     property& operator=(const property&) = delete;
 
-    ~property() { this->call_before_destroyed(); }
+    ~property()
+    {
+        before_destroyed_.emit(*this);
+    }
 
     property(property&& other) noexcept
-        : enable_tracking_ptr<property<T>>{std::move(other)},
-          value_{std::move(other.value_)},
-          value_changed_{std::move(other.value_changed_)}
+        : value_{std::move(other.value_)},
+          // dirty_{other.dirty_},
+          value_changed_{std::move(other.value_changed_)},
+          moved_{std::move(other.moved_)},
+          before_destroyed_{std::move(other.before_destroyed_)}
     {
         other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
-        this->call_moved();
+        moved_.emit(*this);
     }
 
     property& operator=(property&& other) noexcept
     {
-        enable_tracking_ptr<property<T>>::operator=(std::move(other));
         value_ = std::move(other.value_);
+        // dirty_ = other.dirty_;
         value_changed_ = std::move(other.value_changed_);
+        moved_ = std::move(other.moved_);
+        before_destroyed_ = std::move(other.before_destroyed_);
 
         other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
-        this->call_moved();
+        moved_.emit(*this);
         return *this;
     }
 
@@ -100,7 +108,6 @@ public:
 
     bool assign(T value)
     {
-        detach();
         if (!detail::eq(value, value_))
         {
             value_ = std::move(value);
@@ -120,10 +127,11 @@ public:
         {
             provider_ = std::move(provider);
             provider_->set_updated_callback([this] {
-                materialize();
+                dirty_ = true;
                 value_changed_.emit(*this);
             });
             provider_->set_before_invalid_callback([this] { detach(); });
+            dirty_ = true;
             if (materialize())
             {
                 value_changed_.emit(*this);
@@ -135,6 +143,7 @@ public:
 
     bool detach()
     {
+        materialize();
         if (provider_)
         {
             provider_observer_.disconnect();
@@ -150,17 +159,26 @@ public:
         return value_;
     }
 
-    const T& operator*() const { return get(); }
+    const T& operator*() const
+    {
+        return get();
+    }
 
-    operator const T&() const { return get(); }
+    operator const T&() const
+    {
+        return get();
+    }
 
     signal<property&>& value_changed() { return value_changed_; }
+    signal<property&>& moved() { return moved_; }
+    signal<property&>& before_destroyed() { return before_destroyed_; }
 
 private:
     bool materialize() const
     {
-        if (provider_)
+        if (provider_ && dirty_)
         {
+            dirty_ = false;
             auto new_value = provider_->get();
             if (!detail::eq(new_value, value_))
             {
@@ -174,10 +192,12 @@ private:
 private:
     T value_{};
     mutable value_provider_ptr<T> provider_;
+    mutable bool dirty_{};
     scoped_connection provider_observer_;
     signal<property&> value_changed_;
+    signal<property&> moved_;
+    signal<property&> before_destroyed_;
 };
-
 
 template <typename T>
 struct is_property : std::false_type
@@ -190,15 +210,82 @@ struct is_property<property<T>> : std::true_type
 };
 
 template <typename T>
-class property_ptr : public tracking_ptr<property<T>>
+concept IsProperty = std::is_base_of<property<typename T::value_type>, T>::value;
+
+
+template <typename T>
+class property_ref // read-only for now
 {
-    // Aliases doesn't honor CTAD in C++17, so just derive from
-    // tracking_ptr
 public:
-    property_ptr(property<T>* src) noexcept
-        : tracking_ptr<property<T>>{src}
+    using value_type = T;
+
+    property_ref(property<T>& prop) noexcept
+        : property_{&prop}, moved_connection_{connect_moved()}
     {
     }
+
+    property_ref(const property_ref& other) noexcept
+        : property_{other.property_}, moved_connection_{connect_moved()}
+    {
+    }
+    property_ref& operator=(const property_ref& other) noexcept
+    {
+        property_ = other.property_;
+        moved_connection_ = connect_moved();
+    }
+
+    property_ref(property_ref&& other) noexcept
+        : property_{other.property_}, moved_connection_{connect_moved()}
+    {
+        other.moved_connection_.disconnect();
+    }
+
+    property_ref& operator=(property_ref&& other) noexcept
+    {
+        property_ = other.property_;
+        moved_connection_ = connect_moved();
+        other.moved_connection_.disconnect();
+        return *this;
+    }
+
+    signal<property<T>&>& value_changed()
+    {
+        assert(property_);
+        return property_->value_changed();
+    }
+    signal<property<T>&>& before_destroyed()
+    {
+        assert(property_);
+        return property_->before_destroyed();
+    }
+
+    const T& get() const
+    {
+        return *property_;
+    }
+
+    const T& operator*() const
+    {
+        return get();
+    }
+
+    operator const T&() const
+    {
+        return get();
+    }
+
+private:
+    connection connect_moved() noexcept
+    {
+        return property_->moved().connect(
+            [this](property<T>& p) noexcept { on_moved(p); });
+    }
+
+    void on_moved(property<T>& prop) noexcept { property_ = &prop; }
+
+private:
+    property<T>* property_;
+    scoped_connection moved_connection_;
 };
 
 } // namespace circle

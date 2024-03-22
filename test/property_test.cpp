@@ -23,6 +23,9 @@ TEST_CASE("property")
     static_assert(is_property<property<std::string>>::value);
     static_assert(!is_property<signal<std::string>>::value);
 
+    static_assert(IsProperty<property<std::string>>);
+    static_assert(!IsProperty<signal<std::string>>);
+
     SECTION("default-constructed")
     {
         property<int> p;
@@ -281,18 +284,18 @@ TEST_CASE("property with value_provider")
 
 TEST_CASE("property_ref")
 {
-    static_assert(std::is_nothrow_constructible_v<property_ptr<std::string>,
-                                                  property<std::string>*>);
+    static_assert(std::is_nothrow_constructible_v<property_ref<std::string>,
+                                                  property<std::string>&>);
     static_assert(
-        std::is_nothrow_move_constructible_v<property_ptr<std::string>>);
-    static_assert(std::is_nothrow_move_assignable_v<property_ptr<std::string>>);
+        std::is_nothrow_move_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property_ref<std::string>>);
     static_assert(
-        std::is_nothrow_copy_constructible_v<property_ptr<std::string>>);
-    static_assert(std::is_nothrow_copy_assignable_v<property_ptr<std::string>>);
-    static_assert(std::is_nothrow_destructible_v<property_ptr<std::string>>);
+        std::is_nothrow_copy_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_copy_assignable_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property_ref<std::string>>);
 
     property<int> p1 = 5;
-    property_ptr ptr = &p1;
+    property_ref ptr = p1;
     REQUIRE(*ptr == 5);
 
     SECTION("simple")
@@ -312,7 +315,7 @@ TEST_CASE("property_ref")
 
     SECTION("copy")
     {
-        property_ptr ptr2 = ptr;
+        property_ref ptr2 = ptr;
         p1 = 10;
         REQUIRE(*ptr == 10);
         REQUIRE(*ptr2 == 10);
@@ -321,7 +324,7 @@ TEST_CASE("property_ref")
     SECTION("move")
     {
         property<int> p2 = 100;
-        property_ptr ptr2 = &p2;
+        property_ref ptr2 = p2;
         ptr2 = std::move(ptr);
         p1 = 10;
         p2 = 200;
