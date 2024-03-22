@@ -35,7 +35,7 @@
       "name": "ci-g++-7",
       "inherits": "debug",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++7",
+        "CMAKE_CXX_COMPILER": "g++-7",
         "REACTIVE_CPP_COVERAGE": "ON"
       }
     },

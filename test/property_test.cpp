@@ -20,12 +20,6 @@ TEST_CASE("property")
     static_assert(std::is_nothrow_move_assignable_v<property<std::string>>);
     static_assert(std::is_nothrow_destructible_v<property<std::string>>);
 
-    static_assert(is_property<property<std::string>>::value);
-    static_assert(!is_property<signal<std::string>>::value);
-
-    static_assert(IsProperty<property<std::string>>);
-    static_assert(!IsProperty<signal<std::string>>);
-
     SECTION("default-constructed")
     {
         property<int> p;

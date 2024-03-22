@@ -199,19 +199,6 @@ private:
     signal<property&> before_destroyed_;
 };
 
-template <typename T>
-struct is_property : std::false_type
-{
-};
-
-template <typename T>
-struct is_property<property<T>> : std::true_type
-{
-};
-
-template <typename T>
-concept IsProperty = std::is_base_of<property<typename T::value_type>, T>::value;
-
 
 template <typename T>
 class property_ref // read-only for now
