@@ -2,6 +2,7 @@
 
 #include <circle/reactive/observer.hpp>
 #include <circle/reactive/property.hpp>
+#include <circle/reactive/ptr.hpp>
 
 #include <memory>
 #include <tuple>
@@ -9,63 +10,56 @@
 namespace circle {
 
 namespace detail {
+
 template <typename T>
-struct tracking_trait
+struct deref;
+
+template <typename T>
+struct deref<::circle::property<T>>
 {
-    template <typename T1>
-    static T1 element(const enable_tracking_ptr<T1>&)
-    {
-    }
-    template <typename T1>
-    static T1 element(const tracking_ptr<T1>&)
-    {
-    }
-    template <typename T1>
-    static T1 element(const property<T1>&)
-    {
-    }
+    using property_type = ::circle::property<T>;
+    using value_type = typename property_type::value_type;
 
-    template <typename T1>
-    static tracking_ptr<T1> ptr(enable_tracking_ptr<T1>& v)
-    {
-    }
-    template <typename T1>
-    static tracking_ptr<T1> ptr(tracking_ptr<T1>& v)
-    {
-    }
-    template <typename T1>
-    static property_ptr<T1> ptr(property<T1>& v)
-    {
-    }
-
-    template <typename T1>
-    static T1* make_ptr(T1& v)
-    {
-        return &v;
-    }
-    template <typename T1>
-    static tracking_ptr<T1>& make_ptr(tracking_ptr<T1>& v)
-    {
-        return v;
-    }
-
-    using element_type = decltype(element(std::declval<T>()));
-    using ptr_type = decltype(ptr(std::declval<T&>()));
+    deref(property_type& v) : ptr_{v} {}
+    property_ref<value_type> ptr_;
+    operator const value_type&() { return *ptr_; }
 };
 
 template <typename T>
-using tt = typename tracking_trait<T>::element_type;
+struct deref<::circle::property_ref<T>>
+{
+    using property_type = ::circle::property_ref<T>;
+    using value_type = typename property_type::value_type;
+
+    deref(property_type& v) : ptr_{v} {}
+    property_ref<value_type> ptr_;
+    operator const value_type&() { return *ptr_; }
+};
 
 template <typename T>
-struct tracking_deref
+struct deref<::circle::ptr<T>>
 {
-    using element_type = typename tracking_trait<T>::element_type;
-    using ptr_type = typename tracking_trait<T>::ptr_type;
+    using property_type = ::circle::ptr<T>;
+    using value_type = typename property_type::value_type;
 
-    tracking_deref(T& v) : ptr{tracking_trait<T>::make_ptr(v)} {}
-    ptr_type ptr;
-    operator const element_type&() { return *ptr; }
+    deref(property_type& v) : ptr_{v} {}
+    ::circle::weak_ptr<value_type> ptr_;
+    operator const value_type&() { return *ptr_; }
 };
+
+template <typename T>
+struct deref<::circle::weak_ptr<T>>
+{
+    using property_type = ::circle::weak_ptr<T>;
+    using value_type = typename property_type::value_type;
+
+    deref(property_type& v) : ptr_{v} {}
+    ::circle::weak_ptr<value_type> ptr_;
+    operator const value_type&() { return *ptr_; }
+};
+
+template <typename T>
+using tt = typename std::remove_reference_t<T>::value_type;
 
 } // namespace detail
 
@@ -74,9 +68,9 @@ class binding : public value_provider<T>
 {
 public:
     binding(Args&... props, T (*f)(const detail::tt<Args>&...))
-        : arguments_{detail::tracking_deref<Args>{props}...},
+        : arguments_{detail::deref<Args>{props}...},
           function_{f},
-          observer_{detail::tracking_trait<Args>::make_ptr(props)...}
+          observer_{props...}
     {
         observer_.set_callback([this] { updated_(); });
         observer_.set_destroyed_callback([this] { before_invalid_(); });
@@ -103,7 +97,7 @@ public:
 
 private:
     using function_t = T (*)(const detail::tt<Args>&...);
-    std::tuple<detail::tracking_deref<Args>...> arguments_;
+    std::tuple<detail::deref<Args>...> arguments_;
     function_t function_;
     observer<sizeof...(Args)> observer_;
     std::function<void()> updated_;

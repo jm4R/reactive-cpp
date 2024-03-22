@@ -32,13 +32,13 @@ TEST_CASE("ptr")
 TEST_CASE("weak_ptr")
 {
     circle::ptr<int> pint = circle::make_ptr<int>();
-    auto tracking = circle::weak_ptr{pint};
+    auto weak = circle::weak_ptr{pint};
     *pint = 5;
-    REQUIRE(*tracking == 5);
+    REQUIRE(*weak == 5);
 
     SECTION("move constructor")
     {
-        auto p2 = std::move(tracking);
+        auto p2 = std::move(weak);
         REQUIRE(*p2 == 5);
     }
 
@@ -47,8 +47,8 @@ TEST_CASE("weak_ptr")
         auto destroy1_called = false;
         auto destroy2_called = false;
         auto destroy3_called = false;
-        tracking.before_destroyed().connect([&] { destroy1_called = true; });
-        auto p_moved = std::move(tracking);
+        weak.before_destroyed().connect([&] { destroy1_called = true; });
+        auto p_moved = std::move(weak);
         p_moved.before_destroyed().connect([&] { destroy2_called = true; });
         auto p_copy = p_moved;
         p_copy.before_destroyed().connect([&] { destroy3_called = true; });

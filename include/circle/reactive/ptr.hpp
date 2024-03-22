@@ -34,6 +34,8 @@ class ptr final
     std::unique_ptr<detail::ptr_data<T>> ptr_;
 
 public:
+    using value_type = T;
+
     ptr() = default;
     ptr(std::unique_ptr<detail::ptr_data<T>> ptr) : ptr_{std::move(ptr)} {}
 
@@ -133,6 +135,8 @@ class weak_ptr
     scoped_connection destroyed_connection_;
 
 public:
+    using value_type = T;
+
     weak_ptr() = default;
     ~weak_ptr() = default;
 
