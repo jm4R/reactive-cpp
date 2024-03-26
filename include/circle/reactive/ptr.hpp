@@ -159,8 +159,22 @@ public:
         }
     }
 
-    weak_ptr(weak_ptr&& other) noexcept = default;
-    weak_ptr& operator=(weak_ptr&& other) noexcept = default;
+    weak_ptr(weak_ptr&& other) noexcept
+        : src_{other.src_}, destroyed_connection_{connect_destroyed()}
+    {
+        other.src_ = nullptr;
+        other.destroyed_connection_.disconnect();
+    }
+    weak_ptr& operator=(weak_ptr&& other) noexcept
+    {
+        if (src_ != other.src_)
+        {
+            src_ = other.src_;
+            destroyed_connection_ = connect_destroyed();
+            other.src_ = nullptr;
+            other.destroyed_connection_.disconnect();
+        }
+    }
 
     signal<T&>& before_destroyed()
     {

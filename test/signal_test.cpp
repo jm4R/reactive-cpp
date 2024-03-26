@@ -1,7 +1,8 @@
 #include <circle/reactive/signal.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
+#include <optional>
 #include <string>
 
 using namespace circle;
@@ -655,6 +656,19 @@ TEST_CASE("scoped_connection")
         scoped_connection c = s.connect([&](int v) { res += v; });
         c = scoped_connection{};
         s.emit(5);
+        REQUIRE(res == 0);
+    }
+
+    SECTION("overlive signal")
+    {
+        int res{};
+
+        std::optional<signal<int>> s;
+        s.emplace();
+        {
+            scoped_connection c = s->connect([&](int v) { res = v; });
+            s.reset();
+        }
         REQUIRE(res == 0);
     }
 }

@@ -1,5 +1,5 @@
-CPMAddPackage("gh:catchorg/Catch2@2.13.8")
-list(APPEND CMAKE_MODULE_PATH "${Catch2_SOURCE_DIR}/contrib")
+CPMAddPackage("gh:catchorg/Catch2@3.5.3")
+list(APPEND CMAKE_MODULE_PATH "${Catch2_SOURCE_DIR}/extras")
 
 enable_testing()
 include(Catch)
@@ -10,13 +10,11 @@ add_executable(circle-reactive-test
     property_test.cpp
     ptr_test.cpp
     signal_test.cpp
-
-    main_test.cpp
 )
 
 target_link_libraries(circle-reactive-test PRIVATE
     circle::reactive
-    Catch2::Catch2
+    Catch2::Catch2WithMain
 )
 
 catch_discover_tests(circle-reactive-test)
