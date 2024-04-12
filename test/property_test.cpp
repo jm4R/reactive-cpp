@@ -114,6 +114,8 @@ TEST_CASE("property")
         changed = false;
         p = noncomparable{1, 2};
         REQUIRE(changed);
+        REQUIRE(p->a == 1);
+        REQUIRE(p->b == 2);
     }
 
     SECTION("is up-to-date when moved signal called")
@@ -146,6 +148,23 @@ TEST_CASE("property")
             p1 = 5;
         }
         REQUIRE(res == 5);
+    }
+
+    SECTION("using const property")
+    {
+        property<int> p{};
+
+        SECTION("changed by operator=")
+        {
+            const auto& const_p = p;
+
+            int new_value = 0;
+            const_p.value_changed().connect([&](int val) {
+                new_value = val;
+            });
+            p = 5;
+            REQUIRE(new_value == 5);
+        }
     }
 }
 

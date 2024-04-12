@@ -63,10 +63,7 @@ public:
     property(const property&) = delete;
     property& operator=(const property&) = delete;
 
-    ~property()
-    {
-        before_destroyed_.emit(*this);
-    }
+    ~property() { before_destroyed_.emit(*this); }
 
     property(property&& other) noexcept
         : value_{std::move(other.value_)},
@@ -159,19 +156,15 @@ public:
         return value_;
     }
 
-    const T& operator*() const
-    {
-        return get();
-    }
+    const T& operator*() const { return get(); }
 
-    operator const T&() const
-    {
-        return get();
-    }
+    operator const T&() const { return get(); }
 
-    signal<property&>& value_changed() { return value_changed_; }
-    signal<property&>& moved() { return moved_; }
-    signal<property&>& before_destroyed() { return before_destroyed_; }
+    const T* operator->() const { return &get(); }
+
+    signal<property&>& value_changed() const { return value_changed_; }
+    signal<property&>& moved() const { return moved_; }
+    signal<property&>& before_destroyed() const { return before_destroyed_; }
 
 private:
     bool materialize() const
@@ -194,11 +187,10 @@ private:
     mutable value_provider_ptr<T> provider_;
     mutable bool dirty_{};
     scoped_connection provider_observer_;
-    signal<property&> value_changed_;
-    signal<property&> moved_;
-    signal<property&> before_destroyed_;
+    mutable signal<property&> value_changed_;
+    mutable signal<property&> moved_;
+    mutable signal<property&> before_destroyed_;
 };
-
 
 template <typename T>
 class property_ref // read-only for now
@@ -246,20 +238,11 @@ public:
         return property_->before_destroyed();
     }
 
-    const T& get() const
-    {
-        return *property_;
-    }
+    const T& get() const { return *property_; }
 
-    const T& operator*() const
-    {
-        return get();
-    }
+    const T& operator*() const { return get(); }
 
-    operator const T&() const
-    {
-        return get();
-    }
+    operator const T&() const { return get(); }
 
 private:
     connection connect_moved() noexcept
