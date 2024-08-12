@@ -26,7 +26,7 @@ template <typename T>
 class ptr final
 {
     template <typename T1>
-    friend class weak_ptr;
+    friend class tracking_ptr;
 
     template <typename T1, typename... Args>
     ptr<T1> make_ptr(Args&&... args);
@@ -68,15 +68,9 @@ public:
         }
     };
 
-    void operator=(std::nullptr_t) noexcept
-    {
-        reset();
-    }
+    void operator=(std::nullptr_t) noexcept { reset(); }
 
-    void swap(ptr& other) noexcept
-    {
-        ptr_.swap(other);
-    };
+    void swap(ptr& other) noexcept { ptr_.swap(other); };
 
     const T* get() const noexcept { return ptr_ ? &ptr_->obj_ : nullptr; }
     T* get() noexcept { return ptr_ ? &ptr_->obj_ : nullptr; }
@@ -129,7 +123,7 @@ ptr<T> make_ptr(Args&&... args)
 }
 
 template <typename T>
-class weak_ptr
+class tracking_ptr
 {
     detail::ptr_data<T>* src_;
     scoped_connection destroyed_connection_;
@@ -137,20 +131,20 @@ class weak_ptr
 public:
     using value_type = T;
 
-    weak_ptr() = default;
-    ~weak_ptr() = default;
+    tracking_ptr() = default;
+    ~tracking_ptr() = default;
 
-    weak_ptr(const ptr<T>& src) noexcept
+    tracking_ptr(const ptr<T>& src) noexcept
         : src_{src ? src.ptr_.get() : nullptr},
           destroyed_connection_{connect_destroyed()}
     {
     }
 
-    weak_ptr(const weak_ptr& other)
+    tracking_ptr(const tracking_ptr& other)
         : src_{other.src_}, destroyed_connection_{connect_destroyed()}
     {
     }
-    weak_ptr& operator=(const weak_ptr& other)
+    tracking_ptr& operator=(const tracking_ptr& other)
     {
         if (src_ != other.src_)
         {
@@ -159,13 +153,13 @@ public:
         }
     }
 
-    weak_ptr(weak_ptr&& other) noexcept
+    tracking_ptr(tracking_ptr&& other) noexcept
         : src_{other.src_}, destroyed_connection_{connect_destroyed()}
     {
         other.src_ = nullptr;
         other.destroyed_connection_.disconnect();
     }
-    weak_ptr& operator=(weak_ptr&& other) noexcept
+    tracking_ptr& operator=(tracking_ptr&& other) noexcept
     {
         if (src_ != other.src_)
         {
@@ -224,15 +218,9 @@ public:
         return *get();
     }
 
-    const T* get() const noexcept
-    {
-        return src_ ? &src_->obj_ : nullptr;
-    }
+    const T* get() const noexcept { return src_ ? &src_->obj_ : nullptr; }
 
-    T* get() noexcept
-    {
-        return src_ ? &src_->obj_ : nullptr;
-    }
+    T* get() noexcept { return src_ ? &src_->obj_ : nullptr; }
 
 private:
     connection connect_destroyed() noexcept
@@ -243,10 +231,7 @@ private:
             [this](T& p) noexcept { on_destroyed(p); });
     }
 
-    void on_destroyed(T& prop) noexcept
-    {
-        src_ = nullptr;
-    }
+    void on_destroyed(T& prop) noexcept { src_ = nullptr; }
 };
 
 } // namespace circle

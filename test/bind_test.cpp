@@ -139,11 +139,11 @@ TEST_CASE("binding")
         REQUIRE(c == 150);
     }
 
-    SECTION("use weak_ptr")
+    SECTION("use tracking_ptr")
     {
         {
             auto ttt = circle::make_ptr<tracked_test>();
-            auto ppp = circle::weak_ptr{ttt};
+            auto ppp = circle::tracking_ptr{ttt};
             c = make_binding(
                 +[](const tracked_test& ttt, const int& a, const int& b) {
                     return std::max(a, b);

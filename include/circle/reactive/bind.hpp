@@ -43,18 +43,18 @@ struct deref<::circle::ptr<T>>
     using value_type = typename property_type::value_type;
 
     deref(property_type& v) : ptr_{v} {}
-    ::circle::weak_ptr<value_type> ptr_;
+    ::circle::tracking_ptr<value_type> ptr_;
     operator const value_type&() { return *ptr_; }
 };
 
 template <typename T>
-struct deref<::circle::weak_ptr<T>>
+struct deref<::circle::tracking_ptr<T>>
 {
-    using property_type = ::circle::weak_ptr<T>;
+    using property_type = ::circle::tracking_ptr<T>;
     using value_type = typename property_type::value_type;
 
     deref(property_type& v) : ptr_{v} {}
-    ::circle::weak_ptr<value_type> ptr_;
+    ::circle::tracking_ptr<value_type> ptr_;
     operator const value_type&() { return *ptr_; }
 };
 

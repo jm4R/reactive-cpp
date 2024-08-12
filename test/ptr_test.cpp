@@ -29,10 +29,10 @@ TEST_CASE("ptr")
     }
 }
 
-TEST_CASE("weak_ptr")
+TEST_CASE("tracking_ptr")
 {
     circle::ptr<int> pint = circle::make_ptr<int>();
-    auto weak = circle::weak_ptr{pint};
+    auto weak = circle::tracking_ptr{pint};
     *pint = 5;
     REQUIRE(*weak == 5);
 
