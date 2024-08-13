@@ -91,7 +91,13 @@ public:
         return *this;
     }
 
-    property& operator=(T value)
+    property& operator=(const T& value)
+    {
+        assign(value);
+        return *this;
+    }
+
+    property& operator=(T&& value) noexcept
     {
         assign(std::move(value));
         return *this;
@@ -103,7 +109,21 @@ public:
         return *this;
     }
 
-    bool assign(T value)
+    bool assign(const T& value)
+    {
+        if (!detail::eq(value, value_))
+        {
+            value_ = value;
+            value_changed_.emit(*this);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool assign(T&& value) noexcept
     {
         if (!detail::eq(value, value_))
         {

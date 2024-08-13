@@ -166,6 +166,29 @@ TEST_CASE("property")
             REQUIRE(new_value == 5);
         }
     }
+
+    SECTION("construct / assign r-value")
+    {
+        std::vector<float> val1{10, 5.0f};
+        const auto* raw1 = val1.data();
+        property p = std::move(val1);
+        REQUIRE(p->data() == raw1);
+
+        std::vector<float> val2{20, 6.0f};
+        const auto* raw2 = val2.data();
+        p = std::move(val2);
+        REQUIRE(p->data() == raw2);
+    }
+
+    SECTION("use underlying assignment")
+    {
+        std::vector<float> val{10, 5.0f};
+        property p = val;
+        const auto* raw = p->data();
+        val[0] = 1.0f;
+        p = val;
+        REQUIRE(p->data() == raw);
+    }
 }
 
 struct test_provider final : value_provider<int>
