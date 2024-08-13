@@ -218,7 +218,7 @@ class property_ref // read-only for now
 public:
     using value_type = T;
 
-    property_ref(property<T>& prop) noexcept
+    property_ref(const property<T>& prop) noexcept
         : property_{&prop}, moved_connection_{connect_moved()}
     {
     }
@@ -274,7 +274,7 @@ private:
     void on_moved(property<T>& prop) noexcept { property_ = &prop; }
 
 private:
-    property<T>* property_;
+    const property<T>* property_;
     scoped_connection moved_connection_;
 };
 

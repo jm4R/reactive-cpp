@@ -184,4 +184,11 @@ TEST_CASE("binding")
         obj.test_member1 = 8;
         REQUIRE(c == 8);
     }
+
+    SECTION("bind to const property")
+    {
+        const property a = 5;
+        property b = BIND(a, a * 2);
+        REQUIRE(b == 10);
+    }
 }

@@ -12,51 +12,54 @@ namespace circle {
 namespace detail {
 
 template <typename T>
-struct deref;
+struct deref_impl;
 
 template <typename T>
-struct deref<::circle::property<T>>
+struct deref_impl<::circle::property<T>>
 {
     using property_type = ::circle::property<T>;
     using value_type = typename property_type::value_type;
 
-    deref(property_type& v) : ptr_{v} {}
+    deref_impl(const property_type& v) : ptr_{v} {}
     property_ref<value_type> ptr_;
     operator const value_type&() { return *ptr_; }
 };
 
 template <typename T>
-struct deref<::circle::property_ref<T>>
+struct deref_impl<::circle::property_ref<T>>
 {
     using property_type = ::circle::property_ref<T>;
     using value_type = typename property_type::value_type;
 
-    deref(property_type& v) : ptr_{v} {}
+    deref_impl(const property_type& v) : ptr_{v} {}
     property_ref<value_type> ptr_;
     operator const value_type&() { return *ptr_; }
 };
 
 template <typename T>
-struct deref<::circle::ptr<T>>
+struct deref_impl<::circle::ptr<T>>
 {
     using property_type = ::circle::ptr<T>;
     using value_type = typename property_type::value_type;
 
-    deref(property_type& v) : ptr_{v} {}
+    deref_impl(const property_type& v) : ptr_{v} {}
     ::circle::tracking_ptr<value_type> ptr_;
     operator const value_type&() { return *ptr_; }
 };
 
 template <typename T>
-struct deref<::circle::tracking_ptr<T>>
+struct deref_impl<::circle::tracking_ptr<T>>
 {
     using property_type = ::circle::tracking_ptr<T>;
     using value_type = typename property_type::value_type;
 
-    deref(property_type& v) : ptr_{v} {}
+    deref_impl(const property_type& v) : ptr_{v} {}
     ::circle::tracking_ptr<value_type> ptr_;
     operator const value_type&() { return *ptr_; }
 };
+
+template <typename T>
+using deref = deref_impl<std::remove_cv_t<T>>;
 
 template <typename T>
 using tt = typename std::remove_reference_t<T>::value_type;
@@ -192,7 +195,7 @@ inline auto make_binding(F* f, Args&... props)
     CIRCLE_FOLD(CIRCLE_TAKE_VALUE1, CIRCLE_IGNORE, __VA_ARGS__)
 
 #define CIRCLE_DECLTYPE_ARG2(val, name)                                        \
-    const typename detail::tt<decltype(val)>& name
+    const typename ::circle::detail::tt<decltype(val)>& name
 #define CIRCLE_DECLTYPE_ARG1(tuple) CIRCLE_DECLTYPE_ARG2 tuple
 #define CIRCLE_DECLTYPE_ARGS(...)                                              \
     CIRCLE_FOLD(CIRCLE_DECLTYPE_ARG1, CIRCLE_IGNORE, __VA_ARGS__)
@@ -201,11 +204,11 @@ inline auto make_binding(F* f, Args&... props)
     CIRCLE_FOR_EACH(CIRCLE_IGNORE, CIRCLE_IDENTITY, __VA_ARGS__)
 
 #define BIND_IMPL(...)                                                         \
-    make_binding(                                                              \
+    ::circle::make_binding(                                                    \
         +[](CIRCLE_DECLTYPE_ARGS(__VA_ARGS__)) {                               \
             return CIRCLE_GET_LAST(__VA_ARGS__);                               \
         },                                                                     \
-        CIRCLE_TAKE_VALUES(__VA_ARGS__));
+        CIRCLE_TAKE_VALUES(__VA_ARGS__))
 
 #define CIRCLE_UNPACK_IF_PAIR(x, y) x, y
 #define CIRCLE_CHOOSE_FOR_TUPLE_IMPL(arg1, arg2_or_tuple_macro,                \
