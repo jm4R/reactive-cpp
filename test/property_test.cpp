@@ -70,6 +70,26 @@ TEST_CASE("property")
         }
     }
 
+    SECTION("connect with immediate call")
+    {
+        property<int> p{3};
+        int new_value = 0;
+        int call_count = 0;
+        p |= [&](int val) {
+            new_value = val;
+            call_count++;
+        };
+        REQUIRE(new_value == 3);
+        REQUIRE(call_count == 1);
+
+        bool changed = false;
+        p |= [&]() {
+            changed = true;
+        };
+        REQUIRE(changed);
+        REQUIRE(call_count == 1);
+    }
+
     SECTION("moved")
     {
         property<int> p{};

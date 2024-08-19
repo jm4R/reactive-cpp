@@ -186,6 +186,13 @@ public:
     signal<property&>& moved() const { return moved_; }
     signal<property&>& before_destroyed() const { return before_destroyed_; }
 
+    template <typename F>
+    void operator|=(F&& f) const
+    {
+        detail::invoke(f, *this);
+        value_changed_ += std::forward<F>(f);
+    }
+
 private:
     bool materialize() const
     {
