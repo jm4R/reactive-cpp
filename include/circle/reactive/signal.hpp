@@ -6,6 +6,7 @@
 #include <memory>
 #include <tuple>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -67,6 +68,7 @@ private:
 enum class id : unsigned
 {
 };
+using id_set = std::unordered_set<id>;
 
 class connections_container_base
 {
@@ -75,6 +77,7 @@ public:
     [[nodiscard]] virtual bool active(id connection_id) const noexcept = 0;
     virtual bool block(id connection_id, bool) noexcept = 0;
     [[nodiscard]] virtual bool blocked(id connection_id) const noexcept = 0;
+    [[nodiscard]] virtual id_set ids() const = 0;
 
 protected:
     ~connections_container_base() = default;
@@ -238,6 +241,19 @@ public:
         return CIRCLE_WARN_VAL(true, "Checking inactive connection if blocked");
     }
 
+    [[nodiscard]] id_set ids() const override
+    {
+        id_set ids;
+        ids.reserve(connections_.size() + new_connections_.size());
+
+        for (const auto& c : connections_)
+            ids.insert(c.id);
+        for (const auto& c : new_connections_)
+            ids.insert(c.id);
+
+        return ids;
+    }
+
 private:
     void post_invoke()
     {
@@ -349,6 +365,8 @@ private:
 template <typename... Args>
 class signal
 {
+    friend class signal_blocker;
+
     using connections_type = detail::connections_container<Args...>;
     using slot_type = std::function<void(Args...)>;
 
@@ -457,6 +475,43 @@ public:
 
 private:
     connection c_;
+};
+
+class signal_blocker
+{
+public:
+    template <typename... Args>
+    signal_blocker(signal<Args...>& s) noexcept : connections_{s.connections_}
+    {
+        auto& connections = s.connections_;
+        const auto ids = connections->ids();
+        if (ids.empty())
+            CIRCLE_WARN("Creating signal_blocker without any connections");
+
+        for (auto id : ids)
+        {
+            if (!connections->block(id, true))
+                blocked_.insert(id);
+        }
+    }
+
+    signal_blocker(const signal_blocker&) = delete;
+    signal_blocker& operator=(const signal_blocker&) = delete;
+    signal_blocker(signal_blocker&&) = delete;
+    signal_blocker operator==(signal_blocker&&) = delete;
+
+    ~signal_blocker()
+    {
+        if (auto connections = connections_.lock())
+        {
+            for (auto id : blocked_)
+                connections->block(id, false);
+        }
+    }
+
+private:
+    std::weak_ptr<detail::connections_container_base> connections_;
+    detail::id_set blocked_;
 };
 
 template <typename... Args>
