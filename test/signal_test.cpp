@@ -342,6 +342,73 @@ TEST_CASE("signal")
     }
 }
 
+TEST_CASE("signal_blocker")
+{
+    static_assert(
+        std::is_nothrow_constructible_v<signal_blocker, signal<int>&>);
+
+    int res1{};
+    int res2{};
+
+    signal<int> s;
+    connection c1 = s.connect([&](int val) { res1 = val; });
+    connection c2 = s.connect([&](int val) { res2 = val; });
+
+    s.emit(5);
+    REQUIRE(res1 == 5);
+    REQUIRE(res2 == 5);
+
+    SECTION("no already blocked connections")
+    {
+        {
+            signal_blocker blocker1{s};
+            s.emit(10);
+            {
+                signal_blocker blocker2{s};
+                s.emit(15);
+            }
+            s.emit(20);
+            REQUIRE(c1.blocked());
+            REQUIRE(c2.blocked());
+        }
+
+        REQUIRE(res1 == 5);
+        REQUIRE(res2 == 5);
+        REQUIRE(!c1.blocked());
+        REQUIRE(!c2.blocked());
+
+        s.emit(25);
+        REQUIRE(res1 == 25);
+        REQUIRE(res2 == 25);
+    }
+
+    SECTION("some connections already blocked")
+    {
+        c2.block(true);
+
+        {
+            signal_blocker blocker1{s};
+            s.emit(10);
+            {
+                signal_blocker blocker2{s};
+                s.emit(15);
+            }
+            s.emit(20);
+            REQUIRE(c1.blocked());
+            REQUIRE(c2.blocked());
+        }
+
+        REQUIRE(res1 == 5);
+        REQUIRE(res2 == 5);
+        REQUIRE(!c1.blocked());
+        REQUIRE(c2.blocked());
+
+        s.emit(25);
+        REQUIRE(res1 == 25);
+        REQUIRE(res2 == 5);
+    }
+}
+
 TEST_CASE("connection")
 {
     static_assert(std::is_nothrow_default_constructible_v<connection>);

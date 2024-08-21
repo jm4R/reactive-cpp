@@ -74,6 +74,7 @@ public:
     virtual void disconnect(id connection_id) noexcept = 0;
     [[nodiscard]] virtual bool active(id connection_id) const noexcept = 0;
     virtual bool block(id connection_id, bool) noexcept = 0;
+    virtual bool block_all(bool) noexcept = 0;
     [[nodiscard]] virtual bool blocked(id connection_id) const noexcept = 0;
 
 protected:
@@ -145,6 +146,9 @@ public:
     template <typename... LArgs>
     void invoke(LArgs&&... largs)
     {
+        if (blocked_)
+            return;
+
         increment_guard inv_depth_guard{iterations_depth_};
         for (auto& c : connections_)
         {
@@ -226,8 +230,16 @@ public:
         return CIRCLE_WARN_VAL(true, "Blocking inactive connection");
     }
 
+    bool block_all(bool val) noexcept override
+    {
+        return std::exchange(blocked_, val);
+    }
+
     [[nodiscard]] bool blocked(id connection_id) const noexcept override
     {
+        if (blocked_)
+            return true;
+
         if (auto c = find(connection_id))
         {
             if (!c->slot || c->lazy_disconnect)
@@ -259,6 +271,7 @@ private:
     std::vector<connection_data> new_connections_;
 
     unsigned iterations_depth_{};
+    bool blocked_{};
 };
 
 } // namespace detail
@@ -349,6 +362,8 @@ private:
 template <typename... Args>
 class signal
 {
+    friend class signal_blocker;
+
     using connections_type = detail::connections_container<Args...>;
     using slot_type = std::function<void(Args...)>;
 
@@ -457,6 +472,33 @@ public:
 
 private:
     connection c_;
+};
+
+class signal_blocker
+{
+public:
+    template <typename... Args>
+    signal_blocker(signal<Args...>& s) noexcept
+        : connections_{s.connections_}, was_{s.connections_->block_all(true)}
+    {
+    }
+
+    signal_blocker(const signal_blocker&) = delete;
+    signal_blocker& operator=(const signal_blocker&) = delete;
+    signal_blocker(signal_blocker&&) = delete;
+    signal_blocker operator==(signal_blocker&&) = delete;
+
+    ~signal_blocker()
+    {
+        if (auto connections = connections_.lock())
+        {
+            connections->block_all(was_);
+        }
+    }
+
+private:
+    std::weak_ptr<detail::connections_container_base> connections_;
+    bool was_;
 };
 
 template <typename... Args>
