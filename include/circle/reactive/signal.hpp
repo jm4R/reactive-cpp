@@ -426,10 +426,16 @@ public:
     }
 
 private:
-    connection connect_fun(std::function<void(Args...)> f)
+    std::shared_ptr<connections_type>& make_connections()
     {
         if (!connections_)
             connections_ = std::make_shared<connections_type>();
+        return connections_;
+    }
+
+    connection connect_fun(std::function<void(Args...)> f)
+    {
+        make_connections();
         return {connections_, connections_->connect(std::move(f))};
     }
 
@@ -479,7 +485,8 @@ class signal_blocker
 public:
     template <typename... Args>
     signal_blocker(signal<Args...>& s) noexcept
-        : connections_{s.connections_}, was_{s.connections_->block_all(true)}
+        : connections_{s.make_connections()},
+          was_{s.connections_->block_all(true)}
     {
     }
 
