@@ -1,7 +1,8 @@
 #include <circle/reactive/signal.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
+#include <optional>
 #include <string>
 
 using namespace circle;
@@ -248,6 +249,8 @@ TEST_CASE("signal")
         auto s2 = std::move(s1);
         s2.emit(5);
         REQUIRE(res == 5);
+        s1.emit(10);
+        REQUIRE(res == 5);
     }
 
     SECTION("move assignment operator")
@@ -336,6 +339,73 @@ TEST_CASE("signal")
         s.connect(
             [&](base& v) { REQUIRE(dynamic_cast<derived*>(&v) != nullptr); });
         s.emit(obj);
+    }
+}
+
+TEST_CASE("signal_blocker")
+{
+    static_assert(
+        std::is_nothrow_constructible_v<signal_blocker, signal<int>&>);
+
+    int res1{};
+    int res2{};
+
+    signal<int> s;
+    connection c1 = s.connect([&](int val) { res1 = val; });
+    connection c2 = s.connect([&](int val) { res2 = val; });
+
+    s.emit(5);
+    REQUIRE(res1 == 5);
+    REQUIRE(res2 == 5);
+
+    SECTION("no already blocked connections")
+    {
+        {
+            signal_blocker blocker1{s};
+            s.emit(10);
+            {
+                signal_blocker blocker2{s};
+                s.emit(15);
+            }
+            s.emit(20);
+            REQUIRE(c1.blocked());
+            REQUIRE(c2.blocked());
+        }
+
+        REQUIRE(res1 == 5);
+        REQUIRE(res2 == 5);
+        REQUIRE(!c1.blocked());
+        REQUIRE(!c2.blocked());
+
+        s.emit(25);
+        REQUIRE(res1 == 25);
+        REQUIRE(res2 == 25);
+    }
+
+    SECTION("some connections already blocked")
+    {
+        c2.block(true);
+
+        {
+            signal_blocker blocker1{s};
+            s.emit(10);
+            {
+                signal_blocker blocker2{s};
+                s.emit(15);
+            }
+            s.emit(20);
+            REQUIRE(c1.blocked());
+            REQUIRE(c2.blocked());
+        }
+
+        REQUIRE(res1 == 5);
+        REQUIRE(res2 == 5);
+        REQUIRE(!c1.blocked());
+        REQUIRE(c2.blocked());
+
+        s.emit(25);
+        REQUIRE(res1 == 25);
+        REQUIRE(res2 == 5);
     }
 }
 
@@ -653,6 +723,19 @@ TEST_CASE("scoped_connection")
         scoped_connection c = s.connect([&](int v) { res += v; });
         c = scoped_connection{};
         s.emit(5);
+        REQUIRE(res == 0);
+    }
+
+    SECTION("overlive signal")
+    {
+        int res{};
+
+        std::optional<signal<int>> s;
+        s.emplace();
+        {
+            scoped_connection c = s->connect([&](int v) { res = v; });
+            s.reset();
+        }
         REQUIRE(res == 0);
     }
 }

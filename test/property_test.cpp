@@ -1,6 +1,6 @@
 #include <circle/reactive/property.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <string>
 
@@ -19,9 +19,6 @@ TEST_CASE("property")
     static_assert(std::is_nothrow_move_constructible_v<property<std::string>>);
     static_assert(std::is_nothrow_move_assignable_v<property<std::string>>);
     static_assert(std::is_nothrow_destructible_v<property<std::string>>);
-
-    static_assert(is_property<property<std::string>>::value);
-    static_assert(!is_property<signal<std::string>>::value);
 
     SECTION("default-constructed")
     {
@@ -73,6 +70,26 @@ TEST_CASE("property")
         }
     }
 
+    SECTION("connect with immediate call")
+    {
+        property<int> p{3};
+        int new_value = 0;
+        int call_count = 0;
+        p |= [&](int val) {
+            new_value = val;
+            call_count++;
+        };
+        REQUIRE(new_value == 3);
+        REQUIRE(call_count == 1);
+
+        bool changed = false;
+        p |= [&]() {
+            changed = true;
+        };
+        REQUIRE(changed);
+        REQUIRE(call_count == 1);
+    }
+
     SECTION("moved")
     {
         property<int> p{};
@@ -117,6 +134,8 @@ TEST_CASE("property")
         changed = false;
         p = noncomparable{1, 2};
         REQUIRE(changed);
+        REQUIRE(p->a == 1);
+        REQUIRE(p->b == 2);
     }
 
     SECTION("is up-to-date when moved signal called")
@@ -149,6 +168,46 @@ TEST_CASE("property")
             p1 = 5;
         }
         REQUIRE(res == 5);
+    }
+
+    SECTION("using const property")
+    {
+        property<int> p{};
+
+        SECTION("changed by operator=")
+        {
+            const auto& const_p = p;
+
+            int new_value = 0;
+            const_p.value_changed().connect([&](int val) {
+                new_value = val;
+            });
+            p = 5;
+            REQUIRE(new_value == 5);
+        }
+    }
+
+    SECTION("construct / assign r-value")
+    {
+        std::vector<float> val1{10, 5.0f};
+        const auto* raw1 = val1.data();
+        property p = std::move(val1);
+        REQUIRE(p->data() == raw1);
+
+        std::vector<float> val2{20, 6.0f};
+        const auto* raw2 = val2.data();
+        p = std::move(val2);
+        REQUIRE(p->data() == raw2);
+    }
+
+    SECTION("use underlying assignment")
+    {
+        std::vector<float> val{10, 5.0f};
+        property p = val;
+        const auto* raw = p->data();
+        val[0] = 1.0f;
+        p = val;
+        REQUIRE(p->data() == raw);
     }
 }
 
@@ -281,18 +340,18 @@ TEST_CASE("property with value_provider")
 
 TEST_CASE("property_ref")
 {
-    static_assert(std::is_nothrow_constructible_v<property_ptr<std::string>,
-                                                  property<std::string>*>);
+    static_assert(std::is_nothrow_constructible_v<property_ref<std::string>,
+                                                  property<std::string>&>);
     static_assert(
-        std::is_nothrow_move_constructible_v<property_ptr<std::string>>);
-    static_assert(std::is_nothrow_move_assignable_v<property_ptr<std::string>>);
+        std::is_nothrow_move_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_move_assignable_v<property_ref<std::string>>);
     static_assert(
-        std::is_nothrow_copy_constructible_v<property_ptr<std::string>>);
-    static_assert(std::is_nothrow_copy_assignable_v<property_ptr<std::string>>);
-    static_assert(std::is_nothrow_destructible_v<property_ptr<std::string>>);
+        std::is_nothrow_copy_constructible_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_copy_assignable_v<property_ref<std::string>>);
+    static_assert(std::is_nothrow_destructible_v<property_ref<std::string>>);
 
     property<int> p1 = 5;
-    property_ptr ptr = &p1;
+    property_ref ptr = p1;
     REQUIRE(*ptr == 5);
 
     SECTION("simple")
@@ -312,7 +371,7 @@ TEST_CASE("property_ref")
 
     SECTION("copy")
     {
-        property_ptr ptr2 = ptr;
+        property_ref ptr2 = ptr;
         p1 = 10;
         REQUIRE(*ptr == 10);
         REQUIRE(*ptr2 == 10);
@@ -321,7 +380,7 @@ TEST_CASE("property_ref")
     SECTION("move")
     {
         property<int> p2 = 100;
-        property_ptr ptr2 = &p2;
+        property_ref ptr2 = p2;
         ptr2 = std::move(ptr);
         p1 = 10;
         p2 = 200;

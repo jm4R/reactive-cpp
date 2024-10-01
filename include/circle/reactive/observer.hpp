@@ -16,7 +16,7 @@ struct has_value_changed_signal : std::false_type
 template <typename T>
 struct has_value_changed_signal<
     T, std::enable_if_t<is_signal<
-           std::decay_t<decltype(std::declval<T&>()->value_changed())>>::value>>
+           std::decay_t<decltype(std::declval<T&>().value_changed())>>::value>>
     : std::true_type
 {
 };
@@ -31,7 +31,7 @@ class observer
 {
 public:
     template <typename... LArgs>
-    observer(LArgs... props)
+    observer(LArgs&... props)
         : changed_connections_{connect_changed(props)...},
           destroyed_connections_{connect_destroyed(props)...}
     {
@@ -58,7 +58,7 @@ private:
     {
         if constexpr (detail::has_value_changed_signal_v<T>)
         {
-            return p->value_changed().connect(&observer::on_changed, this);
+            return p.value_changed().connect(&observer::on_changed, this);
         }
         else
         {
@@ -69,7 +69,7 @@ private:
     template <typename T>
     connection connect_destroyed(T& p)
     {
-        return p->before_destroyed().connect(&observer::on_destroyed, this);
+        return p.before_destroyed().connect(&observer::on_destroyed, this);
     }
 
     void on_changed()
@@ -94,6 +94,6 @@ private:
 };
 
 template <typename... Args>
-observer(Args...) -> observer<sizeof...(Args)>;
+observer(Args&...) -> observer<sizeof...(Args)>;
 
 } // namespace circle

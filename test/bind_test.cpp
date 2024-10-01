@@ -1,6 +1,6 @@
 #include <circle/reactive/bind.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <cmath>
 #include <string>
@@ -9,27 +9,11 @@ using namespace circle;
 
 static int global_int;
 
-struct tracked_test : public enable_tracking_ptr<tracked_test>
+struct tracked_test
 {
-    using base = enable_tracking_ptr<tracked_test>;
-    tracked_test() = default;
-    ~tracked_test() { this->call_before_destroyed(); }
-
-    tracked_test(tracked_test&& other) : base{std::move(other)}
-    {
-        // all operations comes before
-        this->call_moved();
-    }
-
-    tracked_test& operator=(tracked_test&& other)
-    {
-        base::operator=(std::move(other));
-        this->call_moved();
-        return *this;
-    }
+    int val{};
 };
 
-using test_ptr = tracking_ptr<tracked_test>;
 
 struct test_struct
 {
@@ -61,7 +45,7 @@ TEST_CASE("binding")
         REQUIRE(c == 1300);
     }
 
-    SECTION("macro")
+    SECTION("BIND macro")
     {
         c = BIND(a, b, std::max(a, b) * 2);
         a = 8;
@@ -109,42 +93,57 @@ TEST_CASE("binding")
         REQUIRE(*str == std::string{"max(60, 75) = 75"});
     }
 
-    SECTION("non-lazy evaluation")
+    SECTION("lazy evaluation")
     {
         global_int = 0;
         c = BIND(a, b, global_int = a + b);
         a = 18;
         b = 4;
 
-        REQUIRE(global_int == 22);
+        REQUIRE(global_int == 0);
         REQUIRE(c == 22);
+        REQUIRE(global_int == 22);
     }
 
-    SECTION("use enable_tracking_ptr")
+    SECTION("use property_ref")
+    {
+        auto a_ref = property_ref{a};
+        c = make_binding(
+            +[](const int& a, const int& b) { return a * b; }, a_ref, b);
+        a = 12;
+        b = 100;
+        REQUIRE(c == 1200);
+        a = 13;
+        REQUIRE(c == 1300);
+    }
+
+    SECTION("use ptr")
     {
         {
-            tracked_test ttt;
+            auto ttt = circle::make_ptr<tracked_test>();
             c = make_binding(
                 +[](const tracked_test& ttt, const int& a, const int& b) {
-                    return std::max(a, b);
+                    return std::max(ttt.val, a);
                 },
                 ttt, a, b);
-            c = BIND(ttt, a, b, std::max(a, b));
+            c = BIND(ttt, a, b, std::max(ttt.val, a));
 
-            b = 110;
-            REQUIRE(c == 110);
+            ttt->val = 150;
+            REQUIRE(c == 0); // ttt doesn't notify value change
+            a = 120;
+            REQUIRE(c == 150);
         }
 
         a = 200;
         b = 200;
-        REQUIRE(c == 110);
+        REQUIRE(c == 150);
     }
 
     SECTION("use tracking_ptr")
     {
         {
-            tracked_test ttt;
-            test_ptr ppp = &ttt;
+            auto ttt = circle::make_ptr<tracked_test>();
+            auto ppp = circle::tracking_ptr{ttt};
             c = make_binding(
                 +[](const tracked_test& ttt, const int& a, const int& b) {
                     return std::max(a, b);
@@ -176,5 +175,20 @@ TEST_CASE("binding")
         REQUIRE(sum == 11);
         test_struct::test_static_member = 100;
         REQUIRE(sum == 111);
+    }
+
+    SECTION("BIND_EQ macro")
+    {
+        test_struct obj;
+        c = BIND_EQ(obj.test_member1);
+        obj.test_member1 = 8;
+        REQUIRE(c == 8);
+    }
+
+    SECTION("bind to const property")
+    {
+        const property a = 5;
+        property b = BIND(a, a * 2);
+        REQUIRE(b == 10);
     }
 }

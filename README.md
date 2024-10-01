@@ -88,64 +88,52 @@ The example prints:
 
 When creating a binding, we often encounter the requirement that some object must be alive (eg. not dangling) to be sure that binding is valid. The `std::weak_ptr` could be used in some cases, but it will never guarantee that the binding is fully invalidated, we can only use its state inside a binding logic. It might be more convenient to use following utilities:
 
-#### circle::enable_tracking_ptr and circle::tracking_ptr
+#### circle::ptr
 
-This utility allows tracking object (of class derived from `enable_tracking_ptr`) lifetime. It informs the connected `tracking_ptr` about origin object destruction and address changes (through move operation). The `enable_tracking_ptr` class must implement destructor, move constructor and assignment operator (or `=delete` it). Here's the example:
+It reasembles `std::unique_ptr` logic but has additional signal that informs that the object is about to be destroyed:
 
 ```cpp
 using namespace circle;
-
-struct tracked_test : public enable_tracking_ptr<tracked_test>
 {
-    using base = enable_tracking_ptr<tracked_test>;
-    tracked_test() = default;
-    ~tracked_test() { this->call_before_destroyed(); }
-
-    tracked_test(tracked_test&& other) : base{std::move(other)}
-    {
-        // all operations comes before
-        this->call_moved();
-    }
-
-    tracked_test& operator=(tracked_test&& other)
-    {
-        base::operator=(std::move(other));
-        // all operations comes before
-        this->call_moved();
-        return *this;
-    }
-};
-
-using test_ptr = tracking_ptr<tracked_test>;
-
-int main()
-{
-    tracked_test obj1;
-    test_ptr p = &obj1;
-    assert(p.get() == &obj1);
-    {
-        tracked_test obj2 = std::move(obj1);
-        assert(p.get() == &obj2);
-    }
-    assert(p.is_dangling());
-    // or
-    assert(p == nullptr);
-    // or
-    assert(!p);
+    ptr<int> pint = make_ptr<int>();
+    pint.before_destroyed().connect([](int val) {
+        std::cout << "Value before destroyed: " << val << std::endl;
+    });
+    *pint = 5;
 }
 ```
+The example prints:
 
-The `property<T>` and `property_ptr<T>` can be treated like `enable_tracking_ptr<property>` and `tracking_ptr<property<T>>` in most contexts: it has the same behavior but additional `value_changed` signal that triggers binding update and is dereferenced directly to `const T&` (instead of `const property<T>&`) by binding logic.
+> Value before destroyed: 5
 
-**Note about tracked class inheritance:**
+#### circle::tracking_ptr
+The `tracking_ptr<T>` can be constructed from `ptr<T>`: it is weak, non-owning ptr that tracks the liftime of origin. It can be tested for underlying object being alive, get underlying value and it also provides `before_destroyed` signal:
 
-Let's consider `class tracked : public enable_tracking_ptr<tracked> { /*...*/ };` class. We could want to have another level of derived class, eg. `class derived : public tracked`. For given class:
+```cpp
+using namespace circle;
+{
+    ptr<int> pint = make_ptr<int>();
+    {
+        auto tracking = tracking_ptr{pint};
+        *pint = 10;
+        assert(*tracking == 10);
+        tracking.before_destroyed().connect([](int val) {
+            std::cout << "Value before destroyed: " << val << std::endl;
+        });
+    }
+    *pint = 5;
+}
+```
+The example prints:
 
-* The derived class will work with `tracking_ptr<tracked>` out of the box.
-* If you want to use also `tracking_ptr<derived>`, you would have to reimplement all the necessary boilerplate (destructor, move constructor and move assignment operator, derive from `enable_tracking_ptr`).
+> Value before destroyed: 5
+
+#### Using bindings with ptr/tracking_ptr
+Just like properties, the pointers can also be "captured" by binding expressions. It will not invoke recalculations on pointee change (because no `value_changed` signal is exposed), but it invalidates the binding before the pointee is destroyed:
+
 
 #### circle::observer
-The `observer<N>` utility is a kind of generalization of `tracking_ptr` for multiple (N) trackable objects. It also detects if underlying pointers has `value_changed` special signal and reports it when necessary. It is used internally by `binding` objects but can be used as a separate utility. Here's the example:
+The `observer<N>` utility is a kind of container of `N` trackable objects (namely `property_ref`s and `tracking_ptr`s). It reports if any of tracked objects is about to be destroyed. It also detects if underlying pointers has `value_changed` special signal and reports it when necessary. It is used internally by `binding` objects but can be used as a separate utility. Here's the example:
 
 ```cpp
     property<int> a = 1;
@@ -180,6 +168,7 @@ In header `<circle/reactive/signal.hpp>`
 * `connection`
 * `scoped_connection`
 * `connection_blocker`
+* `signal_blocker`
 
 In header `<circle/reactive/property.hpp>`
 
@@ -198,7 +187,7 @@ In header `<circle/reactive/bind.hpp>`
 * `binding<T, DependentPropertiesOrTrackables...>`
 * `BIND(dependent_list..., expression)` helper macro
 
-In header `<circle/reactive/tracking_ptr.hpp>`
+In header `<circle/reactive/ptr.hpp>`
 
-* `enable_tracking_ptr<tracked_test>` CRTP class
-* `tracking_ptr<Tracked>`
+* `ptr<T>` CRTP class
+* `tracking_ptr<T>`

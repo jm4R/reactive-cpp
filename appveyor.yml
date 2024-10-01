@@ -37,76 +37,59 @@ install:
 
 before_build:
 - cmd: |-
-    mkdir build
-    cd build
     cmake --version
-    cmake -G %generator% -A x64 ..
+    cmake -G %generator% -A x64 -S . --preset debug
 - sh: |-
     cmake --version
 
     echo && echo "------- GCC PROJECT GENERATION -------"
-    mkdir build-gcc
-    cd build-gcc
-    gcc-7 --version
-    cmake -G Ninja \
-     -DCMAKE_BUILD_TYPE=Debug \
-     -DREACTIVE_CPP_COVERAGE=ON \
-     -DCMAKE_CXX_COMPILER=g++-7 \
-     ..
-    cd ..
+    g++-7 --version
+    cmake -S . --preset=ci-g++-7
 
     echo && echo "------- CLANG PROJECT GENERATION -------"
-    mkdir build-clang
-    cd build-clang
     clang++-9 --version
-    cmake -DCMAKE_CXX_COMPILER=clang++-9 -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
-    cd ..
+    cmake -S . --preset=ci-clang++-9
+
+    echo && echo "------- UNDERINED BEHAVIOR SANITIZER PROJECT GENERATION -------"
+    clang++ --version
+    cmake -S . --preset=ci-ubsan
 
     echo && echo "------- EMSCRIPTEN PROJECT GENERATION -------"
-    mkdir build-emscripten
-    cd build-emscripten
     $EMSDK/upstream/emscripten/emcc -v
-    cmake \
-     -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
-     -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
-     cd ..
+    cmake -S . --preset=wasm-debug
 
     echo && echo "------- COVERAGE PROJECT GENERATION -------"
-    mkdir build-coverage
-    cd build-coverage
-    gcc-9 --version
-    cmake -G Ninja \
-     -DCMAKE_BUILD_TYPE=Debug \
-     -DREACTIVE_CPP_COVERAGE=ON \
-     -DCMAKE_CXX_COMPILER=g++-9 \
-     ..
-    cd ..
+    g++-9 --version
+    cmake -S . --preset=ci-coverage
 
 
 build_script:
-- cmd: cmake --build . --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+- cmd: cmake --build build/debug --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 - sh: |-
     echo && echo "------- GCC BUILD -------"
-    cmake --build build-gcc
+    cmake --build build/ci-g++-7
     echo && echo "------- CLANG BUILD -------"
-    cmake --build build-clang
+    cmake --build build/ci-clang++-9
+    echo && echo "------- UNDERINED BEHAVIOR SANITIZER BUILD -------"
+    cmake --build build/ci-ubsan
     echo && echo "------- EMSCRIPTEN BUILD -------"
-    cmake --build build-emscripten
+    cmake --build build/wasm-debug
     echo && echo "------- COVERAGE BUILD -------"
-    cmake --build build-coverage --target circle-reactive-coverage-xml
+    cmake --build build/ci-coverage --target circle-reactive-coverage-xml
 
 test_script:
 - cmd: |-
-    cd test\Debug\
+    cd build\debug\test\Debug\
     circle-reactive-test.exe
 - sh: |-
-    echo && echo "------- GCC BUILD TEST -------" && ./build-gcc/test/circle-reactive-test
-    echo && echo "------- CLANG BUILD TEST -------" && ./build-clang/test/circle-reactive-test
-    echo && echo "------- EMSCRIPTEN BUILD TEST -------" && node ./build-emscripten/test/circle-reactive-test
+    echo && echo "------- GCC BUILD TEST -------" && ./build/ci-g++7/test/circle-reactive-test
+    echo && echo "------- CLANG BUILD TEST -------" && ./build/ci-clang++-9/test/circle-reactive-test
+    echo && echo "------- UNDERINED BEHAVIOR SANITIZER RUN -------" && ./build/ci-ubsan/test/circle-reactive-test
+    echo && echo "------- EMSCRIPTEN BUILD TEST -------" && node ./build/wasm-debug/test/circle-reactive-test
 
 on_success:
 - sh: |-
-    cd build-coverage/test
+    cd build/ci-coverage/test
     curl -Os https://uploader.codecov.io/latest/linux/codecov
     chmod +x codecov
     ./codecov -f circle-reactive-test-coverage.xml
