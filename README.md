@@ -91,7 +91,8 @@ When creating a binding, we often encounter the requirement that some object mus
 #### circle::ptr
 
 It reasembles `std::unique_ptr` logic but has additional signal that informs that the object is about to be destroyed:
-```
+
+```cpp
 using namespace circle;
 {
     ptr<int> pint = make_ptr<int>();
@@ -107,7 +108,8 @@ The example prints:
 
 #### circle::tracking_ptr
 The `tracking_ptr<T>` can be constructed from `ptr<T>`: it is weak, non-owning ptr that tracks the liftime of origin. It can be tested for underlying object being alive, get underlying value and it also provides `before_destroyed` signal:
-```
+
+```cpp
 using namespace circle;
 {
     ptr<int> pint = make_ptr<int>();
@@ -166,6 +168,7 @@ In header `<circle/reactive/signal.hpp>`
 * `connection`
 * `scoped_connection`
 * `connection_blocker`
+* `signal_blocker`
 
 In header `<circle/reactive/property.hpp>`
 
@@ -184,7 +187,7 @@ In header `<circle/reactive/bind.hpp>`
 * `binding<T, DependentPropertiesOrTrackables...>`
 * `BIND(dependent_list..., expression)` helper macro
 
-In header `<circle/reactive/tracking_ptr.hpp>`
+In header `<circle/reactive/ptr.hpp>`
 
-* `enable_tracking_ptr<tracked_test>` CRTP class
-* `tracking_ptr<Tracked>`
+* `ptr<T>` CRTP class
+* `tracking_ptr<T>`
