@@ -280,7 +280,7 @@ TEST_CASE("property with value_provider")
         REQUIRE(p == 15);
     }
 
-    SECTION("assume provider's value changed even if didn't")
+    SECTION("don't call value_changed if providers value didn't change")
     {
         p = test_provider::make(5);
         auto* provider = test_provider::instance;
@@ -290,7 +290,7 @@ TEST_CASE("property with value_provider")
 
         change_called = false;
         provider->updated_();
-        REQUIRE(change_called == true);
+        REQUIRE(change_called == false);
         REQUIRE(new_value == 5);
         REQUIRE(p == 5);
     }

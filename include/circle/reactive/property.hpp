@@ -67,7 +67,6 @@ public:
 
     property(property&& other) noexcept
         : value_{std::move(other.value_)},
-          // dirty_{other.dirty_},
           value_changed_{std::move(other.value_changed_)},
           moved_{std::move(other.moved_)},
           before_destroyed_{std::move(other.before_destroyed_)}
@@ -80,7 +79,6 @@ public:
     property& operator=(property&& other) noexcept
     {
         value_ = std::move(other.value_);
-        // dirty_ = other.dirty_;
         value_changed_ = std::move(other.value_changed_);
         moved_ = std::move(other.moved_);
         before_destroyed_ = std::move(other.before_destroyed_);
@@ -93,13 +91,13 @@ public:
 
     property& operator=(const T& value)
     {
-        assign(value);
+        assign_and_notify(value);
         return *this;
     }
 
-    property& operator=(T&& value) noexcept
+    property& operator=(T&& value)
     {
-        assign(std::move(value));
+        assign_and_notify(std::move(value));
         return *this;
     }
 
@@ -111,30 +109,14 @@ public:
 
     bool assign(const T& value)
     {
-        if (!detail::eq(value, value_))
-        {
-            value_ = value;
-            value_changed_.emit(*this);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        detach();
+        return assign_and_notify(value);
     }
 
-    bool assign(T&& value) noexcept
+    bool assign(T&& value)
     {
-        if (!detail::eq(value, value_))
-        {
-            value_ = std::move(value);
-            value_changed_.emit(*this);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        detach();
+        return assign_and_notify(std::move(value));
     }
 
     bool assign(value_provider_ptr<T> provider)
@@ -143,24 +125,15 @@ public:
         if (provider)
         {
             provider_ = std::move(provider);
-            provider_->set_updated_callback([this] {
-                dirty_ = true;
-                value_changed_.emit(*this);
-            });
+            provider_->set_updated_callback([this] { materialize(); });
             provider_->set_before_invalid_callback([this] { detach(); });
-            dirty_ = true;
-            if (materialize())
-            {
-                value_changed_.emit(*this);
-                return true;
-            }
+            return materialize();
         }
         return false;
     }
 
     bool detach()
     {
-        materialize();
         if (provider_)
         {
             provider_observer_.disconnect();
@@ -172,7 +145,6 @@ public:
 
     const T& get() const
     {
-        materialize();
         return value_;
     }
 
@@ -194,25 +166,33 @@ public:
     }
 
 private:
-    bool materialize() const
+    bool materialize()
     {
-        if (provider_ && dirty_)
+        if (provider_)
         {
-            dirty_ = false;
-            auto new_value = provider_->get();
-            if (!detail::eq(new_value, value_))
-            {
-                const_cast<T&>(value_) = std::move(new_value);
-                return true;
-            }
+            return assign_and_notify(provider_->get());
         }
         return false;
     }
 
+    template <typename U>
+    bool assign_and_notify(U&& value)
+    {
+        if (!detail::eq(value, value_))
+        {
+            value_ = std::forward<U>(value);
+            value_changed_.emit(*this);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
 private:
     T value_{};
-    mutable value_provider_ptr<T> provider_;
-    mutable bool dirty_{};
+    value_provider_ptr<T> provider_;
     scoped_connection provider_observer_;
     mutable signal<property&> value_changed_;
     mutable signal<property&> moved_;

@@ -93,14 +93,32 @@ TEST_CASE("binding")
         REQUIRE(*str == std::string{"max(60, 75) = 75"});
     }
 
-    SECTION("lazy evaluation")
+    SECTION("immediate (not lazy) evaluation")
+    {
+        global_int = 0;
+        a = 15;
+        b = 2;
+        c = BIND(a, b, a / b);
+
+        bool called = false;
+        c.value_changed() += [&]{ called = true; };
+
+        a = 14;
+        REQUIRE(!called);
+        a = 15;
+        REQUIRE(!called);
+        a = 13;
+        REQUIRE(called);
+    }
+
+    SECTION("don't call value_changed when re-calculated value didn't change")
     {
         global_int = 0;
         c = BIND(a, b, global_int = a + b);
         a = 18;
         b = 4;
 
-        REQUIRE(global_int == 0);
+        REQUIRE(global_int == 22);
         REQUIRE(c == 22);
         REQUIRE(global_int == 22);
     }
