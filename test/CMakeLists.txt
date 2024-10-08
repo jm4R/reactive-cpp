@@ -6,6 +6,7 @@ include(Catch)
 
 add_executable(circle-reactive-test
     bind_test.cpp
+    connections_handler_test.cpp
     observer_test.cpp
     property_test.cpp
     ptr_test.cpp

@@ -182,6 +182,12 @@ In header `<circle/reactive/observer.hpp>`
 
 * `observer<N>`
 
+In header `<circle/reactive/connection_handler.hpp>`
+
+* `connection_handler`
+* `AUTO_CONNECT(sig_or_prop, method)` helper macro
+* `AUTO_CONNECTP(sig_or_prop, method, params_list...)` helper macro
+
 In header `<circle/reactive/bind.hpp>`
 
 * `binding<T, DependentPropertiesOrTrackables...>`

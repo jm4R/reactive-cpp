@@ -165,6 +165,17 @@ public:
     signal<property&>& moved() const { return moved_; }
     signal<property&>& before_destroyed() const { return before_destroyed_; }
 
+    template <typename F, typename... LArgs>
+    connection connect(F&& f, LArgs&&... largs) const
+    {
+        auto s = [f = std::forward<F>(f),
+                  largs...](const property& args) mutable {
+            detail::invoke(f, largs..., args);
+        };
+        detail::invoke(s, *this);
+        return value_changed_.connect(s);
+    }
+
     template <typename F>
     void operator|=(F&& f) const
     {
