@@ -33,7 +33,7 @@ init:
 install:
 - sh: |-
     sudo apt-get update
-    sudo apt-get install -y gcovr
+    sudo apt-get install -y g++-7 gcovr
 
 before_build:
 - cmd: |-
