@@ -25,8 +25,8 @@ init:
     python --version
     git clone https://github.com/emscripten-core/emsdk.git
     cd emsdk
-    ./emsdk install 3.1.4
-    ./emsdk activate 3.1.4
+    ./emsdk install 3.1.68
+    ./emsdk activate 3.1.68
     source ./emsdk_env.sh
     popd
 
