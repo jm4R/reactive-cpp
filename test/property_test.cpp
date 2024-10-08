@@ -213,10 +213,15 @@ TEST_CASE("property")
 
 struct test_provider final : value_provider<int>
 {
+    std::function<void()> updating_;
     std::function<void()> updated_;
     std::function<void()> before_invalid_;
     int value_{};
     bool is_invalid_{};
+    void set_updating_callback(std::function<void()> clb) override
+    {
+        updating_ = std::move(clb);
+    }
     void set_updated_callback(std::function<void()> clb) override
     {
         updated_ = std::move(clb);
@@ -247,10 +252,10 @@ struct test_provider final : value_provider<int>
 TEST_CASE("property with value_provider")
 {
     property<int> p;
-    int new_value = 0;
+    int callback_value = 0;
     bool change_called = false;
     auto c = p.value_changed().connect([&](int val) {
-        new_value = val;
+        callback_value = val;
         change_called = true;
     });
 
@@ -261,9 +266,11 @@ TEST_CASE("property with value_provider")
         REQUIRE(change_called == false);
         REQUIRE(p == 0);
         provider->value_ = 5;
+        provider->updating_();
+        REQUIRE(change_called == false);
         provider->updated_();
         REQUIRE(change_called == true);
-        REQUIRE(new_value == 5);
+        REQUIRE(callback_value == 5);
         REQUIRE(p == 5);
     }
 
@@ -272,11 +279,14 @@ TEST_CASE("property with value_provider")
         p = test_provider::make(5);
         auto* provider = test_provider::instance;
         REQUIRE(change_called == true);
-        REQUIRE(new_value == 5);
+        REQUIRE(callback_value == 5);
         REQUIRE(p == 5);
         provider->value_ = 15;
+        provider->updating_();
+        REQUIRE(p.get() == 15);
+        REQUIRE(callback_value == 5);
         provider->updated_();
-        REQUIRE(new_value == 15);
+        REQUIRE(callback_value == 15);
         REQUIRE(p == 15);
     }
 
@@ -285,13 +295,13 @@ TEST_CASE("property with value_provider")
         p = test_provider::make(5);
         auto* provider = test_provider::instance;
         REQUIRE(change_called == true);
-        REQUIRE(new_value == 5);
+        REQUIRE(callback_value == 5);
         REQUIRE(p == 5);
 
         change_called = false;
         provider->updated_();
         REQUIRE(change_called == false);
-        REQUIRE(new_value == 5);
+        REQUIRE(callback_value == 5);
         REQUIRE(p == 5);
     }
 
@@ -302,6 +312,7 @@ TEST_CASE("property with value_provider")
             p = test_provider::make(5);
             auto* provider = test_provider::instance;
             provider->value_ = 15;
+            provider->updating_();
             provider->updated_();
             provider->before_invalid_();
             // freed:
@@ -320,6 +331,7 @@ TEST_CASE("property with value_provider")
             p2 = std::move(p);
             auto* provider = test_provider::instance;
             provider->value_ = 15;
+            provider->updating_();
             provider->updated_();
             provider->before_invalid_();
             // freed:

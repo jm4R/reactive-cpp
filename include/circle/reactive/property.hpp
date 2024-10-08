@@ -41,6 +41,7 @@ class value_provider
 {
 public:
     virtual ~value_provider() {}
+    virtual void set_updating_callback(std::function<void()> clb) = 0;
     virtual void set_updated_callback(std::function<void()> clb) = 0;
     virtual void set_before_invalid_callback(std::function<void()> clb) = 0;
     virtual T get() = 0;
@@ -67,6 +68,7 @@ public:
 
     property(property&& other) noexcept
         : value_{std::move(other.value_)},
+          value_changing_{std::move(other.value_changing_)},
           value_changed_{std::move(other.value_changed_)},
           moved_{std::move(other.moved_)},
           before_destroyed_{std::move(other.before_destroyed_)}
@@ -79,6 +81,7 @@ public:
     property& operator=(property&& other) noexcept
     {
         value_ = std::move(other.value_);
+        value_changing_ = std::move(other.value_changing_);
         value_changed_ = std::move(other.value_changed_);
         moved_ = std::move(other.moved_);
         before_destroyed_ = std::move(other.before_destroyed_);
@@ -91,13 +94,15 @@ public:
 
     property& operator=(const T& value)
     {
-        assign_and_notify(value);
+        detach();
+        assign_impl(value, true);
         return *this;
     }
 
     property& operator=(T&& value)
     {
-        assign_and_notify(std::move(value));
+        detach();
+        assign_impl(std::move(value), true);
         return *this;
     }
 
@@ -110,13 +115,13 @@ public:
     bool assign(const T& value)
     {
         detach();
-        return assign_and_notify(value);
+        return assign_impl(value, true);
     }
 
     bool assign(T&& value)
     {
         detach();
-        return assign_and_notify(std::move(value));
+        return assign_impl(std::move(value), true);
     }
 
     bool assign(value_provider_ptr<T> provider)
@@ -125,9 +130,10 @@ public:
         if (provider)
         {
             provider_ = std::move(provider);
-            provider_->set_updated_callback([this] { materialize(); });
+            provider_->set_updating_callback([this] { materialize(); });
+            provider_->set_updated_callback([this] { on_provider_updated(); });
             provider_->set_before_invalid_callback([this] { detach(); });
-            return materialize();
+            return assign_impl(provider_->get(), true);
         }
         return false;
     }
@@ -154,6 +160,7 @@ public:
 
     const T* operator->() const { return &get(); }
 
+    signal<property&>& value_changing() const { return value_changing_; }
     signal<property&>& value_changed() const { return value_changed_; }
     signal<property&>& moved() const { return moved_; }
     signal<property&>& before_destroyed() const { return before_destroyed_; }
@@ -166,22 +173,39 @@ public:
     }
 
 private:
+    void on_provider_updated()
+    {
+        if (value_changed_by_provider_)
+        {
+            value_changed_.emit(*this);
+            value_changed_by_provider_ = false;
+        }
+    }
+
     bool materialize()
     {
         if (provider_)
         {
-            return assign_and_notify(provider_->get());
+            if (assign_impl(provider_->get(), false))
+            {
+                value_changed_by_provider_ = true;
+                return true;
+            }
         }
         return false;
     }
 
     template <typename U>
-    bool assign_and_notify(U&& value)
+    bool assign_impl(U&& value, bool notify)
     {
         if (!detail::eq(value, value_))
         {
             value_ = std::forward<U>(value);
-            value_changed_.emit(*this);
+            value_changing_.emit(*this);
+            if (notify)
+            {
+                value_changed_.emit(*this);
+            }
             return true;
         }
         else
@@ -194,9 +218,12 @@ private:
     T value_{};
     value_provider_ptr<T> provider_;
     scoped_connection provider_observer_;
+    mutable signal<property&> value_changing_;
     mutable signal<property&> value_changed_;
     mutable signal<property&> moved_;
     mutable signal<property&> before_destroyed_;
+
+    bool value_changed_by_provider_{};
 };
 
 template <typename T>
@@ -234,12 +261,19 @@ public:
         return *this;
     }
 
-    signal<property<T>&>& value_changed()
+    auto& value_changing()
+    {
+        assert(property_);
+        return property_->value_changing();
+    }
+
+    auto& value_changed()
     {
         assert(property_);
         return property_->value_changed();
     }
-    signal<property<T>&>& before_destroyed()
+
+    auto& before_destroyed()
     {
         assert(property_);
         return property_->before_destroyed();
