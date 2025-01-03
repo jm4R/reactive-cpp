@@ -22,7 +22,7 @@ struct test_struct
     inline static property<int> test_static_member;
 };
 
-TEST_CASE("binding")
+TEST_CASE("binding", "[binding]")
 {
     static_assert(
         std::is_constructible_v<binding<float, property<int>>, property<int>&,
@@ -93,14 +93,32 @@ TEST_CASE("binding")
         REQUIRE(*str == std::string{"max(60, 75) = 75"});
     }
 
-    SECTION("lazy evaluation")
+    SECTION("immediate (not lazy) evaluation")
+    {
+        global_int = 0;
+        a = 15;
+        b = 2;
+        c = BIND(a, b, a / b);
+
+        bool called = false;
+        c.value_changed() += [&]{ called = true; };
+
+        a = 14;
+        REQUIRE(!called);
+        a = 15;
+        REQUIRE(!called);
+        a = 13;
+        REQUIRE(called);
+    }
+
+    SECTION("don't call value_changed when re-calculated value didn't change")
     {
         global_int = 0;
         c = BIND(a, b, global_int = a + b);
         a = 18;
         b = 4;
 
-        REQUIRE(global_int == 0);
+        REQUIRE(global_int == 22);
         REQUIRE(c == 22);
         REQUIRE(global_int == 22);
     }
@@ -190,5 +208,38 @@ TEST_CASE("binding")
         const property a = 5;
         property b = BIND(a, a * 2);
         REQUIRE(b == 10);
+    }
+
+    SECTION("all binding tree is up to date during value_changed")
+    {
+        // This test also shows why single `value_changed` signal is not enough
+        // and `value_changing` had to be introduced:
+        //
+        // * value_changing: during its propagation all dependent properties
+        // values are updated
+        //
+        // * value_changed: second signal emmited when all dependent properties
+        // values are already up to date
+
+        auto x = property{1};
+        property x10 = BIND(x, x * 10);
+        property x100 = BIND(x, x * 100);
+        property xx1000 = BIND(x10, x100, x10 * x100);
+
+        int called = 0;
+        auto check = [&] {
+            ++called;
+            REQUIRE(x10 == x * 10);
+            REQUIRE(x100 == x * 100);
+            REQUIRE(xx1000 == x * x * 1000);
+        };
+
+        x10.value_changed() += check;
+        x100.value_changed() += check;
+        xx1000.value_changed() += check;
+
+        x = 2;
+        x = 3;
+        REQUIRE(called == 6);
     }
 }

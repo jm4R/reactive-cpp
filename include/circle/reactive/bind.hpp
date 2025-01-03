@@ -75,7 +75,8 @@ public:
           function_{f},
           observer_{props...}
     {
-        observer_.set_callback([this] { updated_(); });
+        observer_.set_changing_callback([this] { updating_(); });
+        observer_.set_changed_callback([this] { updated_(); });
         observer_.set_destroyed_callback([this] { before_invalid_(); });
     }
 
@@ -88,6 +89,10 @@ public:
     binding& operator=(const binding&) = delete;
 
 public:
+    void set_updating_callback(std::function<void()> clb) override
+    {
+        updating_ = std::move(clb);
+    }
     void set_updated_callback(std::function<void()> clb) override
     {
         updated_ = std::move(clb);
@@ -103,6 +108,7 @@ private:
     std::tuple<detail::deref<Args>...> arguments_;
     function_t function_;
     observer<sizeof...(Args)> observer_;
+    std::function<void()> updating_;
     std::function<void()> updated_;
     std::function<void()> before_invalid_;
 };

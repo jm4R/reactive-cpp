@@ -129,11 +129,11 @@ The example prints:
 > Value before destroyed: 5
 
 #### Using bindings with ptr/tracking_ptr
-Just like properties, the pointers can also be "captured" by binding expressions. It will not invoke recalculations on pointee change (because no `value_changed` signal is exposed), but it invalidates the binding before the pointee is destroyed:
+Just like properties, the pointers can also be "captured" by binding expressions. It will not invoke recalculations on pointee change (because no `value_changing`/`value_changed` signals are exposed), but it invalidates the binding before the pointee is destroyed:
 
 
 #### circle::observer
-The `observer<N>` utility is a kind of container of `N` trackable objects (namely `property_ref`s and `tracking_ptr`s). It reports if any of tracked objects is about to be destroyed. It also detects if underlying pointers has `value_changed` special signal and reports it when necessary. It is used internally by `binding` objects but can be used as a separate utility. Here's the example:
+The `observer<N>` utility is a kind of container of `N` trackable objects (namely `property_ref`s and `tracking_ptr`s). It reports if any of tracked objects is about to be destroyed. It also detects if underlying pointers has `value_changing`/`value_changed` special signals pair and reports it when necessary. It is used internally by `binding` objects but can be used as a separate utility. Here's the example:
 
 ```cpp
     property<int> a = 1;
@@ -142,7 +142,7 @@ The `observer<N>` utility is a kind of container of `N` trackable objects (namel
     long c = a * b;
 
     // value callback:
-    obs.set_callback(
+    obs.set_changed_callback(
         [&c, a = property_ptr{&a}, b = property_ptr{&b}] { c = *a * *b; });
     assert(c == 1);
     a = 2;
@@ -181,6 +181,12 @@ In header `<circle/reactive/property.hpp>`
 In header `<circle/reactive/observer.hpp>`
 
 * `observer<N>`
+
+In header `<circle/reactive/connection_handler.hpp>`
+
+* `connection_handler`
+* `AUTO_CONNECT(sig_or_prop, method)` helper macro
+* `AUTO_CONNECTP(sig_or_prop, method, params_list...)` helper macro
 
 In header `<circle/reactive/bind.hpp>`
 
