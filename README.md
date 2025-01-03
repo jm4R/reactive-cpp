@@ -6,8 +6,8 @@ Branch          | Appveyor | Codecov |
 [`develop`](https://github.com/jm4R/reactive-cpp/tree/develop) | [![Build status](https://ci.appveyor.com/api/projects/status/ix6o5njakdpqvbrl/branch/develop?svg=true)](https://ci.appveyor.com/project/jm4R/reactive-cpp/branch/develop) | [![codecov](https://codecov.io/gh/jm4R/reactive-cpp/branch/develop/graph/badge.svg)](https://codecov.io/gh/jm4R/reactive-cpp) |
 
 #### CI build targets
-* g++-7
-* clang-9
+* g++-10
+* clang-12
 * MSVC++ 2019
 * MSVC++ 2022
 * emscripten 3.1
@@ -186,7 +186,6 @@ In header `<circle/reactive/connection_handler.hpp>`
 
 * `connection_handler`
 * `AUTO_CONNECT(sig_or_prop, method)` helper macro
-* `AUTO_CONNECTP(sig_or_prop, method, params_list...)` helper macro
 
 In header `<circle/reactive/bind.hpp>`
 

@@ -33,7 +33,7 @@ init:
 install:
 - sh: |-
     sudo apt-get update
-    sudo apt-get install -y g++-7 gcovr
+    sudo apt-get install -y g++-10 clang-12 gcovr
 
 before_build:
 - cmd: |-
@@ -43,14 +43,14 @@ before_build:
     cmake --version
 
     echo && echo "------- GCC PROJECT GENERATION -------"
-    g++-7 --version
-    cmake -S . --preset=ci-g++-7
+    g++-10 --version
+    cmake -S . --preset=ci-g++-10
 
     echo && echo "------- CLANG PROJECT GENERATION -------"
-    clang++-9 --version
-    cmake -S . --preset=ci-clang++-9
+    clang++-10 --version
+    cmake -S . --preset=ci-clang++-12
 
-    echo && echo "------- UNDERINED BEHAVIOR SANITIZER PROJECT GENERATION -------"
+    echo && echo "------- UNDEFINED BEHAVIOR SANITIZER PROJECT GENERATION -------"
     clang++ --version
     cmake -S . --preset=ci-ubsan
 
@@ -59,7 +59,7 @@ before_build:
     cmake -S . --preset=wasm-debug
 
     echo && echo "------- COVERAGE PROJECT GENERATION -------"
-    g++-9 --version
+    g++-10 --version
     cmake -S . --preset=ci-coverage
 
 
@@ -67,9 +67,9 @@ build_script:
 - cmd: cmake --build build/debug --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 - sh: |-
     echo && echo "------- GCC BUILD -------"
-    cmake --build build/ci-g++-7
+    cmake --build build/ci-g++-10
     echo && echo "------- CLANG BUILD -------"
-    cmake --build build/ci-clang++-9
+    cmake --build build/ci-clang++-12
     echo && echo "------- UNDERINED BEHAVIOR SANITIZER BUILD -------"
     cmake --build build/ci-ubsan
     echo && echo "------- EMSCRIPTEN BUILD -------"
@@ -82,8 +82,8 @@ test_script:
     cd build\debug\test\Debug\
     circle-reactive-test.exe
 - sh: |-
-    echo && echo "------- GCC BUILD TEST -------" && ./build/ci-g++7/test/circle-reactive-test
-    echo && echo "------- CLANG BUILD TEST -------" && ./build/ci-clang++-9/test/circle-reactive-test
+    echo && echo "------- GCC BUILD TEST -------" && ./build/ci-g++10/test/circle-reactive-test
+    echo && echo "------- CLANG BUILD TEST -------" && ./build/ci-clang++-12/test/circle-reactive-test
     echo && echo "------- UNDERINED BEHAVIOR SANITIZER RUN -------" && ./build/ci-ubsan/test/circle-reactive-test
     echo && echo "------- EMSCRIPTEN BUILD TEST -------" && node ./build/wasm-debug/test/circle-reactive-test
 

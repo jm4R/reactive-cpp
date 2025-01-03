@@ -3,37 +3,17 @@
 #include <circle/reactive/signal.hpp>
 
 #include <functional>
-#include <type_traits>
 
 namespace circle {
 
 namespace detail {
 
-template <typename T, typename = void>
-struct has_value_changing_signal : std::false_type
-{
-};
 template <typename T>
-struct has_value_changing_signal<
-    T, std::enable_if_t<is_signal<
-           std::decay_t<decltype(std::declval<T&>().value_changing())>>::value>>
-    : std::true_type
+concept has_value_changing_signals = requires(T val)
 {
+    { val.value_changing() } -> ::circle::is_signal;
+    { val.value_changed() } -> ::circle::is_signal;
 };
-template <typename T, typename = void>
-struct has_value_changed_signal : std::false_type
-{
-};
-template <typename T>
-struct has_value_changed_signal<
-    T, std::enable_if_t<is_signal<
-           std::decay_t<decltype(std::declval<T&>().value_changed())>>::value>>
-    : std::true_type
-{
-};
-template <typename T>
-inline constexpr bool has_value_changing_signals_v =
-    has_value_changing_signal<T>::value && has_value_changed_signal<T>::value;
 
 } // namespace detail
 
@@ -73,7 +53,7 @@ private:
     template <typename T>
     connection connect_changing(T& p)
     {
-        if constexpr (detail::has_value_changing_signals_v<T>)
+        if constexpr (detail::has_value_changing_signals<T>)
         {
             return p.value_changing().connect(&observer::on_changing, this);
         }
@@ -86,7 +66,7 @@ private:
     template <typename T>
     connection connect_changed(T& p)
     {
-        if constexpr (detail::has_value_changing_signals_v<T>)
+        if constexpr (detail::has_value_changing_signals<T>)
         {
             return p.value_changed().connect(&observer::on_changed, this);
         }

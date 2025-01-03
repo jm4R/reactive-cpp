@@ -2,29 +2,18 @@
 
 #include <circle/reactive/signal.hpp>
 
+#include <concepts>
 #include <functional>
 #include <memory>
 
 namespace circle {
 
 namespace detail {
-template <typename T, typename = bool>
-struct is_equality_comparable : std::false_type
-{
-};
-
-template <typename T>
-struct is_equality_comparable<
-    T, typename std::enable_if_t<true, decltype(std::declval<const T&>() ==
-                                                std::declval<const T&>())>>
-    : std::true_type
-{
-};
 
 template <typename T>
 constexpr bool eq(const T& v1, const T& v2)
 {
-    if constexpr (is_equality_comparable<T>::value)
+    if constexpr (std::equality_comparable<T>)
     {
         return v1 == v2;
     }

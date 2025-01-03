@@ -32,25 +32,25 @@
       "inherits": "base-release"
     },
     {
-      "name": "ci-g++-7",
+      "name": "ci-g++-10",
       "inherits": "debug",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++-7",
+        "CMAKE_CXX_COMPILER": "g++-10",
         "REACTIVE_CPP_COVERAGE": "ON"
       }
     },
     {
-      "name": "ci-clang++-9",
+      "name": "ci-clang++-12",
       "inherits": "debug",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++-9"
+        "CMAKE_CXX_COMPILER": "clang++-12"
       }
     },
     {
       "name": "ci-ubsan",
       "inherits": "debug",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_COMPILER": "clang++-12",
         "CMAKE_CXX_FLAGS": "-fsanitize=undefined -fno-sanitize-recover=all",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined -fno-sanitize-recover=all"
       }
@@ -59,7 +59,7 @@
       "name": "ci-coverage",
       "inherits": "debug",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++-9",
+        "CMAKE_CXX_COMPILER": "g++-10",
         "REACTIVE_CPP_COVERAGE": "ON"
       }
     },

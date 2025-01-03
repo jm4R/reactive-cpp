@@ -12,7 +12,7 @@ target_include_directories(circle-reactive INTERFACE
 )
 
 target_compile_features(circle-reactive INTERFACE
-    cxx_std_17
+    cxx_std_20
 )
 
 add_library(circle::reactive ALIAS circle-reactive)

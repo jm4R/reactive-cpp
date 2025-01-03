@@ -24,24 +24,15 @@ namespace circle {
 namespace detail {
 
 template <std::size_t... Is, typename F, typename Tuple>
-constexpr void invoke_impl(
-    std::index_sequence<Is...>, F&& f, Tuple&& args,
-    std::enable_if_t<std::is_invocable_v<F, std::tuple_element_t<Is, Tuple>...>,
-                     void>* = nullptr)
+constexpr void invoke_impl(std::index_sequence<Is...>, F&& f, Tuple&& args)
 {
-    std::invoke(std::forward<F>(f), std::get<Is>(args)...);
-}
-
-template <std::size_t... Is, typename F, typename Tuple>
-constexpr void invoke_impl(
-    std::index_sequence<Is...>, F&& f, Tuple&& args,
-    std::enable_if_t<
-        !std::is_invocable_v<F, std::tuple_element_t<Is, Tuple>...>, void>* =
-        nullptr)
-{
-    static_assert(sizeof...(Is) > 0, "Not invocable with arguments supplied");
-    if constexpr (sizeof...(Is) > 0)
+    if constexpr (std::is_invocable_v<F, std::tuple_element_t<Is, Tuple>...>)
     {
+        std::invoke(std::forward<F>(f), std::get<Is>(args)...);
+    }
+    else if constexpr (sizeof...(Is) > 0)
+    {
+        static_assert(sizeof...(Is) > 0, "Not invocable with arguments supplied");
         invoke_impl(std::make_index_sequence<sizeof...(Is) - 1>(),
                     std::forward<F>(f), std::move(args));
     }
@@ -51,8 +42,16 @@ constexpr void invoke_impl(
 template <typename F, typename... Args>
 constexpr void invoke(F&& f, Args&&... args)
 {
-    invoke_impl(std::make_index_sequence<sizeof...(Args)>(), std::forward<F>(f),
-                std::forward_as_tuple(std::forward<Args>(args)...));
+    if constexpr (std::is_invocable_v<F, Args...>)
+    {
+        std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    }
+    else
+    {
+        invoke_impl(std::make_index_sequence<sizeof...(Args) - 1>(),
+                    std::forward<F>(f),
+                    std::forward_as_tuple(std::forward<Args>(args)...));
+    }
 }
 
 struct increment_guard
@@ -509,14 +508,17 @@ private:
 };
 
 template <typename... Args>
-struct is_signal : std::false_type
+struct is_any_signal : std::false_type
 {
 };
 
 template <typename... Args>
-struct is_signal<signal<Args...>> : std::true_type
+struct is_any_signal<signal<Args...>> : std::true_type
 {
 };
+
+template <typename T>
+concept is_signal = is_any_signal<std::remove_reference_t<T>>::value;
 
 } // namespace circle
 
