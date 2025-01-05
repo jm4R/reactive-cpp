@@ -176,7 +176,7 @@ public:
         return src_->before_destroyed_;
     }
 
-    explicit operator bool() const noexcept { return !!src_(); }
+    explicit operator bool() const noexcept { return !!src_; }
     bool operator==(T* ptr) const noexcept { return ptr == src_; }
     bool operator!=(T* ptr) const noexcept { return ptr != src_; }
     bool operator==(std::nullptr_t) const noexcept { return !src_; }
@@ -190,6 +190,18 @@ public:
     }
     template <typename T2>
     bool operator!=(const ptr<T2>& other) const noexcept
+    {
+        return !(*this == other);
+    }
+
+    template <typename T2>
+    bool operator==(const tracking_ptr<T2>& other) const noexcept
+    {
+        return (!src_ && !other.src_) ||
+               (src_ && other.src_ && *src_ == *other.src_);
+    }
+    template <typename T2>
+    bool operator!=(const tracking_ptr<T2>& other) const noexcept
     {
         return !(*this == other);
     }
