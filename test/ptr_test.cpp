@@ -32,13 +32,13 @@ TEST_CASE("ptr")
 TEST_CASE("tracking_ptr")
 {
     circle::ptr<int> pint = circle::make_ptr<int>();
-    auto weak = circle::tracking_ptr{pint};
+    auto tracking = circle::tracking_ptr{pint};
     *pint = 5;
-    REQUIRE(*weak == 5);
+    REQUIRE(*tracking == 5);
 
     SECTION("move constructor")
     {
-        auto p2 = std::move(weak);
+        auto p2 = std::move(tracking);
         REQUIRE(*p2 == 5);
     }
 
@@ -47,8 +47,8 @@ TEST_CASE("tracking_ptr")
         auto destroy1_called = false;
         auto destroy2_called = false;
         auto destroy3_called = false;
-        weak.before_destroyed().connect([&] { destroy1_called = true; });
-        auto p_moved = std::move(weak);
+        tracking.before_destroyed().connect([&] { destroy1_called = true; });
+        auto p_moved = std::move(tracking);
         p_moved.before_destroyed().connect([&] { destroy2_called = true; });
         auto p_copy = p_moved;
         p_copy.before_destroyed().connect([&] { destroy3_called = true; });
@@ -62,4 +62,19 @@ TEST_CASE("tracking_ptr")
         REQUIRE(destroy2_called == true);
         REQUIRE(destroy3_called == true);
     }
+}
+
+namespace {
+struct trackable : public circle::enable_tracking_from_this<trackable>
+{
+    int x{};
+};
+} // namespace
+
+TEST_CASE("tracking from this")
+{
+    auto ptr = circle::make_ptr<trackable>();
+    auto tracking = circle::tracking_ptr{ptr};
+    ptr->x = 5;
+    REQUIRE(tracking->x == 5);
 }

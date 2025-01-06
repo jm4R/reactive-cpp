@@ -116,12 +116,6 @@ public:
     }
 };
 
-template <typename T, typename... Args>
-ptr<T> make_ptr(Args&&... args)
-{
-    return {std::make_unique<detail::ptr_data<T>>(std::forward<Args>(args)...)};
-}
-
 template <typename T>
 class tracking_ptr
 {
@@ -245,5 +239,29 @@ private:
 
     void on_destroyed(T& prop) noexcept { src_ = nullptr; }
 };
+
+template <typename T>
+class enable_tracking_from_this
+{
+    tracking_ptr<T>& tracking_form_this() const { return tracking_this_; }
+
+private:
+    template <typename Tp, typename... Args>
+    friend ptr<Tp> make_ptr(Args&&... args);
+
+    mutable tracking_ptr<T> tracking_this_;
+};
+
+template <typename T, typename... Args>
+ptr<T> make_ptr(Args&&... args)
+{
+    auto res = ptr<T>{
+        std::make_unique<detail::ptr_data<T>>(std::forward<Args>(args)...)};
+    if constexpr (std::is_base_of<enable_tracking_from_this<T>, T>::value)
+    {
+        res->tracking_this_ = tracking_ptr{res};
+    }
+    return res;
+}
 
 } // namespace circle
