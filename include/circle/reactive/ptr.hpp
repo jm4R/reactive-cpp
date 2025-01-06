@@ -179,25 +179,14 @@ public:
     template <typename T2>
     bool operator==(const ptr<T2>& other) const noexcept
     {
-        return (!src_ && !other.src_) ||
-               (src_ && other.src_ && *src_ == *other.src_);
-    }
-    template <typename T2>
-    bool operator!=(const ptr<T2>& other) const noexcept
-    {
-        return !(*this == other);
+        return (!src_ && !other.ptr_) ||
+               (src_ && other.ptr_ && src_ == other.ptr_.get());
     }
 
     template <typename T2>
     bool operator==(const tracking_ptr<T2>& other) const noexcept
     {
-        return (!src_ && !other.src_) ||
-               (src_ && other.src_ && *src_ == *other.src_);
-    }
-    template <typename T2>
-    bool operator!=(const tracking_ptr<T2>& other) const noexcept
-    {
-        return !(*this == other);
+        return src_ == other.src_;
     }
 
     const T* operator->() const noexcept

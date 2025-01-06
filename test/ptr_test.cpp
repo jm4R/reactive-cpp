@@ -62,6 +62,37 @@ TEST_CASE("tracking_ptr")
         REQUIRE(destroy2_called == true);
         REQUIRE(destroy3_called == true);
     }
+
+    SECTION("compare")
+    {
+        circle::ptr<int> pint2 = circle::make_ptr<int>();
+
+        SECTION("ptr with ptr")
+        {
+            REQUIRE(pint == pint);
+            REQUIRE_FALSE(pint == pint2);
+            REQUIRE(pint2 != tracking);
+            REQUIRE_FALSE(pint != pint);
+        }
+
+        SECTION("ptr with tracking_ptr")
+        {
+            REQUIRE(tracking == pint);
+            REQUIRE(pint == tracking);
+            REQUIRE_FALSE(pint2 == tracking);
+            REQUIRE_FALSE(pint != tracking);
+            REQUIRE(pint2 != tracking);
+        }
+
+        SECTION("tracking_ptr with tracking_ptr")
+        {
+            const auto tracking2 = circle::tracking_ptr{pint2};
+            REQUIRE(tracking == tracking);
+            REQUIRE_FALSE(tracking2 == tracking);
+            REQUIRE_FALSE(tracking != tracking);
+            REQUIRE(tracking2 != tracking);
+        }
+    }
 }
 
 namespace {
