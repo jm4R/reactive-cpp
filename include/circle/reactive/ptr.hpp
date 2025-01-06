@@ -232,7 +232,12 @@ private:
 template <typename T>
 class enable_tracking_from_this
 {
-    tracking_ptr<T>& tracking_form_this() const { return tracking_this_; }
+public:
+    tracking_ptr<T>& tracking_form_this() const
+    {
+        assert(tracking_this_);
+        return tracking_this_;
+    }
 
 private:
     template <typename Tp, typename... Args>

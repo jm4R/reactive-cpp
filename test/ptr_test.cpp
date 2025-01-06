@@ -105,7 +105,7 @@ struct trackable : public circle::enable_tracking_from_this<trackable>
 TEST_CASE("tracking from this")
 {
     auto ptr = circle::make_ptr<trackable>();
-    auto tracking = circle::tracking_ptr{ptr};
+    auto tracking = ptr->tracking_form_this();
     ptr->x = 5;
     REQUIRE(tracking->x == 5);
 }
