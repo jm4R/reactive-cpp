@@ -96,16 +96,39 @@ TEST_CASE("tracking_ptr")
 }
 
 namespace {
-struct trackable : public circle::enable_tracking_from_this<trackable>
+
+struct trackable_base : public circle::enable_tracking_from_this<trackable_base>
 {
     int x{};
 };
+struct trackable_derived : public trackable_base
+{
+};
+
 } // namespace
 
 TEST_CASE("tracking from this")
 {
-    auto ptr = circle::make_ptr<trackable>();
-    auto tracking = ptr->tracking_form_this();
+    auto ptr = circle::make_ptr<trackable_derived>();
+    circle::tracking_ptr<trackable_base> tracking_base =
+        ptr->tracking_form_this();
+    circle::tracking_ptr<trackable_derived> tracking_derived =
+        ptr->tracking_form_this<trackable_derived>();
+
     ptr->x = 5;
-    REQUIRE(tracking->x == 5);
+    REQUIRE(tracking_base->x == 5);
+
+    SECTION("implicitly convertible derived to base")
+    {
+        circle::tracking_ptr<trackable_base> b = tracking_derived;
+        b = tracking_derived;
+        REQUIRE(b->x == 5);
+    }
+
+    SECTION("cast base to derived")
+    {
+        circle::tracking_ptr<trackable_derived> d =
+            circle::static_pointer_cast<trackable_derived>(tracking_base);
+        REQUIRE(d->x == 5);
+    }
 }
