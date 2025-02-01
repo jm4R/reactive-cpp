@@ -8,6 +8,14 @@ namespace circle {
 
 namespace detail {
 
+class tracking_from_this_tag
+{
+};
+
+template <typename T>
+concept tracking_from_this_enabled =
+    std::is_base_of<tracking_from_this_tag, T>::value;
+
 template <typename T>
 struct ptr_data
 {
@@ -20,8 +28,21 @@ struct ptr_data
     }
 };
 
-class tracking_from_this_tag
+template <tracking_from_this_enabled T>
+struct ptr_data<T>
 {
+    T obj_;
+    signal<>& before_destroyed_; // in this specialization signal must already
+                                 // be constructed on T's constructor to be able
+                                 // to use tracking_form_this from inside. We
+                                 // only keep reference here.
+
+    template <typename... Args>
+    ptr_data(Args&&... args)
+        : obj_{std::forward<Args>(args)...},
+          before_destroyed_{obj_.before_destroyed_}
+    {
+    }
 };
 
 } // namespace detail
@@ -201,8 +222,10 @@ public:
     }
 
 private:
-    template <class T1, class U>
-    friend tracking_ptr<T1> static_pointer_cast(const tracking_ptr<U>& r) noexcept;
+    template <class T2, class U>
+    friend tracking_ptr<T2> static_pointer_cast(const tracking_ptr<U>& r) noexcept;
+    template <typename T2>
+    friend class enable_tracking_from_this;
 
     explicit tracking_ptr(T* ptr, signal<>* before_destroyed)
         : ptr_{ptr},
@@ -287,29 +310,27 @@ class enable_tracking_from_this : public detail::tracking_from_this_tag
 {
 public:
     template <typename T2 = T>
-    tracking_ptr<T2> tracking_form_this() const
+    tracking_ptr<T2> tracking_form_this()
     {
-        assert(tracking_this_);
-        return static_pointer_cast<T2>(tracking_this_);
+        // NOTE: calling this function from object created without make_ptr
+        // usage is not currently verified and is treated as UB. This is
+        // different compared to
+        // std::enable_shared_from_this::shared_from_this() behavior!
+        return tracking_ptr<T2>{static_cast<T2*>(this), &before_destroyed_};
     }
 
 private:
-    template <typename Tp, typename... Args>
-    friend ptr<Tp> make_ptr(Args&&... args);
+    template <typename T2>
+    friend struct detail::ptr_data;
 
-    mutable tracking_ptr<T> tracking_this_;
+    signal<> before_destroyed_{};
 };
 
 template <typename T, typename... Args>
 ptr<T> make_ptr(Args&&... args)
 {
-    auto res = ptr<T>{
+    return ptr<T>{
         std::make_unique<detail::ptr_data<T>>(std::forward<Args>(args)...)};
-    if constexpr (std::is_base_of<detail::tracking_from_this_tag, T>::value)
-    {
-        res->tracking_this_ = tracking_ptr{res};
-    }
-    return res;
 }
 
 } // namespace circle

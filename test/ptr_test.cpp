@@ -103,32 +103,53 @@ struct trackable_base : public circle::enable_tracking_from_this<trackable_base>
 };
 struct trackable_derived : public trackable_base
 {
+    trackable_derived() : tracking_from_constructor{tracking_form_this<trackable_derived>()}
+    {
+        tracking_from_constructor.before_destroyed().connect(
+            [this] { on_before_destroyed(); });
+    }
+
+    void on_before_destroyed() { destroyed = true; }
+
+    inline static bool destroyed{};
+    circle::tracking_ptr<trackable_derived> tracking_from_constructor;
 };
 
 } // namespace
 
 TEST_CASE("tracking from this")
 {
-    auto ptr = circle::make_ptr<trackable_derived>();
-    circle::tracking_ptr<trackable_base> tracking_base =
-        ptr->tracking_form_this();
-    circle::tracking_ptr<trackable_derived> tracking_derived =
-        ptr->tracking_form_this<trackable_derived>();
-
-    ptr->x = 5;
-    REQUIRE(tracking_base->x == 5);
-
-    SECTION("implicitly convertible derived to base")
+    bool local_destroyed = false;
+    trackable_derived::destroyed = false;
     {
-        circle::tracking_ptr<trackable_base> b = tracking_derived;
-        b = tracking_derived;
-        REQUIRE(b->x == 5);
-    }
+        auto ptr = circle::make_ptr<trackable_derived>();
+        circle::tracking_ptr<trackable_base> tracking_base =
+            ptr->tracking_form_this();
+        circle::tracking_ptr<trackable_derived> tracking_derived =
+            ptr->tracking_form_this<trackable_derived>();
 
-    SECTION("cast base to derived")
-    {
-        circle::tracking_ptr<trackable_derived> d =
-            circle::static_pointer_cast<trackable_derived>(tracking_base);
-        REQUIRE(d->x == 5);
+        ptr->tracking_from_constructor.before_destroyed() +=
+            [&] { local_destroyed = true; };
+
+        ptr->x = 5;
+        REQUIRE(tracking_base->x == 5);
+
+        SECTION("implicitly convertible derived to base")
+        {
+            circle::tracking_ptr<trackable_base> b = tracking_derived;
+            b = tracking_derived;
+            REQUIRE(b->x == 5);
+        }
+
+        SECTION("cast base to derived")
+        {
+            circle::tracking_ptr<trackable_derived> d =
+                circle::static_pointer_cast<trackable_derived>(tracking_base);
+            REQUIRE(d->x == 5);
+        }
+
+        REQUIRE_FALSE(trackable_derived::destroyed);
     }
+    REQUIRE(trackable_derived::destroyed);
+    REQUIRE(local_destroyed);
 }
