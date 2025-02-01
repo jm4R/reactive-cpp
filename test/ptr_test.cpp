@@ -128,6 +128,9 @@ TEST_CASE("tracking from this")
         circle::tracking_ptr<trackable_derived> tracking_derived =
             ptr->tracking_form_this<trackable_derived>();
 
+        circle::tracking_ptr<trackable_base> tracking_base_copy =
+            tracking_derived;
+
         ptr->tracking_from_constructor.before_destroyed() +=
             [&] { local_destroyed = true; };
 

@@ -156,7 +156,17 @@ public:
     tracking_ptr() = default;
     ~tracking_ptr() = default;
 
+    tracking_ptr(std::nullptr_t) {}
+
     tracking_ptr(const ptr<T>& src) noexcept
+        : ptr_{src.get()},
+          before_destroyed_{src ? &src.ptr_->before_destroyed_ : nullptr},
+          destroyed_connection_{connect_destroyed()}
+    {
+    }
+
+    template <typename Y>
+    tracking_ptr(const ptr<Y>& src) noexcept
         : ptr_{src.get()},
           before_destroyed_{src ? &src.ptr_->before_destroyed_ : nullptr},
           destroyed_connection_{connect_destroyed()}
@@ -177,6 +187,26 @@ public:
             before_destroyed_ = other.before_destroyed_;
             destroyed_connection_ = connect_destroyed();
         }
+        return *this;
+    }
+
+    template <typename Y>
+    tracking_ptr(const tracking_ptr<Y>& other)
+        : ptr_{other.ptr_},
+          before_destroyed_{other.before_destroyed_},
+          destroyed_connection_{connect_destroyed()}
+    {
+    }
+    template <typename Y>
+    tracking_ptr& operator=(const tracking_ptr<Y>& other)
+    {
+        if (ptr_ != other.ptr_)
+        {
+            ptr_ = other.ptr_;
+            before_destroyed_ = other.before_destroyed_;
+            destroyed_connection_ = connect_destroyed();
+        }
+        return *this;
     }
 
     tracking_ptr(tracking_ptr&& other) noexcept
@@ -202,21 +232,27 @@ public:
         return *this;
     }
 
-    template <typename T2>
-    tracking_ptr(const tracking_ptr<T2>& other)
+    template <typename Y>
+    tracking_ptr(tracking_ptr<Y>&& other) noexcept //10b
         : ptr_{other.ptr_},
           before_destroyed_{other.before_destroyed_},
           destroyed_connection_{connect_destroyed()}
     {
+        other.ptr_ = nullptr;
+        other.before_destroyed_ = nullptr;
+        other.destroyed_connection_.disconnect();
     }
-    template <typename T2>
-    tracking_ptr& operator=(const tracking_ptr<T2>& other)
+    template <typename Y>
+    tracking_ptr& operator=(tracking_ptr<Y>&& other) noexcept
     {
         if (ptr_ != other.ptr_)
         {
             ptr_ = other.ptr_;
             before_destroyed_ = other.before_destroyed_;
             destroyed_connection_ = connect_destroyed();
+            other.ptr_ = nullptr;
+            other.before_destroyed_ = nullptr;
+            other.destroyed_connection_.disconnect();
         }
         return *this;
     }
