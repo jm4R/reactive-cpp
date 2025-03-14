@@ -343,7 +343,7 @@ public:
     {
         if (!c.active())
             CIRCLE_WARN("Creating connection_blocker on inactive connection");
-        was_ = c.block(true);
+        state_ = c.block(true) ? state::was_blocked : state::wasnt_blocked;
     }
 
     connection_blocker(const connection_blocker&) = delete;
@@ -351,10 +351,25 @@ public:
     connection_blocker(connection_blocker&&) = delete;
     connection_blocker operator==(connection_blocker&&) = delete;
 
-    ~connection_blocker() { connection_.block(was_); }
+    ~connection_blocker() { dismiss(); }
+
+    void dismiss()
+    {
+        if (state_ != state::dismissed)
+        {
+            connection_.block(state_ == state::was_blocked);
+            state_ = state::dismissed;
+        }
+    }
 
 private:
-    bool was_;
+    enum class state : char
+    {
+        wasnt_blocked,
+        was_blocked,
+        dismissed
+    };
+    state state_;
     connection connection_;
 };
 
@@ -485,26 +500,49 @@ public:
     template <typename... Args>
     signal_blocker(signal<Args...>& s) noexcept
         : connections_{s.make_connections()},
-          was_{s.connections_->block_all(true)}
+          state_{s.connections_->block_all(true) ? state::was_blocked
+                                                 : state::wasnt_blocked}
     {
     }
 
     signal_blocker(const signal_blocker&) = delete;
     signal_blocker& operator=(const signal_blocker&) = delete;
-    signal_blocker(signal_blocker&&) = delete;
-    signal_blocker operator==(signal_blocker&&) = delete;
 
-    ~signal_blocker()
+    signal_blocker(signal_blocker&& other) noexcept
+        : connections_{std::move(other.connections_)},
+          state_{std::exchange(other.state_, state::dismissed)}
     {
-        if (auto connections = connections_.lock())
+    }
+    signal_blocker& operator==(signal_blocker&& other) noexcept
+    {
+        connections_ = std::move(other.connections_);
+        state_ = std::exchange(other.state_, state::dismissed);
+        return *this;
+    }
+
+    ~signal_blocker() { dismiss(); }
+
+    void dismiss()
+    {
+        if (state_ != state::dismissed)
         {
-            connections->block_all(was_);
+            if (auto connections = connections_.lock())
+            {
+                connections->block_all(state_ == state::was_blocked);
+            }
+            state_ = state::dismissed;
         }
     }
 
 private:
     std::weak_ptr<detail::connections_container_base> connections_;
-    bool was_;
+    enum class state : char
+    {
+        wasnt_blocked,
+        was_blocked,
+        dismissed
+    };
+    state state_;
 };
 
 template <typename... Args>

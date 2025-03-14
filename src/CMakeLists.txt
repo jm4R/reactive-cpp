@@ -5,6 +5,7 @@ add_library(circle-reactive INTERFACE
     ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/property.hpp
     ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/ptr.hpp
     ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/signal.hpp
+    ${reactive-cpp_SOURCE_DIR}/include/circle/reactive/transaction.hpp
 )
 
 target_include_directories(circle-reactive INTERFACE

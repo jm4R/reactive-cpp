@@ -11,6 +11,7 @@ add_executable(circle-reactive-test
     property_test.cpp
     ptr_test.cpp
     signal_test.cpp
+    transaction_test.cpp
 )
 
 target_link_libraries(circle-reactive-test PRIVATE
