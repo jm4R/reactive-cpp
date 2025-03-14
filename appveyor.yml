@@ -8,7 +8,6 @@ branches:
 image:
 - Ubuntu2004
 - Visual Studio 2022
-- Visual Studio 2019
 
 matrix:
   fast_finish: false
@@ -16,7 +15,6 @@ matrix:
 init:
 - cmd: |-
     echo %APPVEYOR_BUILD_WORKER_IMAGE%
-    if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" ( set generator="Visual Studio 16 2019" )
     if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2022" ( set generator="Visual Studio 17 2022" )
     echo %generator%
 - sh: |-
