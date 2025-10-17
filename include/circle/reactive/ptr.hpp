@@ -17,19 +17,19 @@ concept tracking_from_this_enabled =
     std::is_base_of<tracking_from_this_tag, T>::value;
 
 template <typename T>
-struct ptr_data
+struct obj_with_signal
 {
     T obj_;
     signal<> before_destroyed_;
 
     template <typename... Args>
-    ptr_data(Args&&... args) : obj_{std::forward<Args>(args)...}
+    obj_with_signal(Args&&... args) : obj_{std::forward<Args>(args)...}
     {
     }
 };
 
 template <tracking_from_this_enabled T>
-struct ptr_data<T>
+struct obj_with_signal<T>
 {
     T obj_;
     signal<>& before_destroyed_; // in this specialization signal must already
@@ -38,12 +38,31 @@ struct ptr_data<T>
                                  // only keep reference here.
 
     template <typename... Args>
-    ptr_data(Args&&... args)
+    obj_with_signal(Args&&... args)
         : obj_{std::forward<Args>(args)...},
           before_destroyed_{obj_.before_destroyed_}
     {
     }
 };
+
+template <typename T>
+struct ptr_data
+{
+    std::shared_ptr<T> data_;
+    signal<>& before_destroyed_;
+
+    operator bool() const { return !!data_; }
+};
+
+template <typename T, typename... Args>
+ptr_data<T> make_ptr_data(Args&&... args)
+{
+    auto data_ptr =
+        std::make_shared<obj_with_signal<T>>(std::forward<Args>(args)...);
+    auto obj_ptr =
+        std::shared_ptr<T>{data_ptr, &data_ptr->obj_}; // aliasing constructor
+    return ptr_data{std::move(obj_ptr), data_ptr->before_destroyed_};
+}
 
 } // namespace detail
 
@@ -54,23 +73,20 @@ class ptr final
     friend class tracking_ptr;
 
     template <typename T1, typename... Args>
-    ptr<T1> make_ptr(Args&&... args);
+    friend ptr<T1> make_ptr(Args&&... args);
 
-    std::unique_ptr<detail::ptr_data<T>> ptr_;
+    template <typename U>
+    friend class ptr;
+
+    detail::ptr_data<T> data_;
 
 public:
     using value_type = T;
 
     ptr() = default;
-    ptr(std::unique_ptr<detail::ptr_data<T>> ptr) : ptr_{std::move(ptr)} {}
+    ptr(detail::ptr_data<T> ptr) : data_{std::move(ptr)} {}
 
-    ~ptr()
-    {
-        if (ptr_)
-        {
-            ptr_->before_destroyed_();
-        }
-    }
+    ~ptr() { reset(); }
 
     ptr(const ptr& other) = delete;
     ptr& operator=(const ptr& other) = delete;
@@ -78,65 +94,86 @@ public:
     ptr(ptr&& other) noexcept = default;
     ptr& operator=(ptr&& other) noexcept = default;
 
+    template <typename Derived,
+              std::enable_if_t<std::is_base_of_v<T, Derived>, int> = 0>
+    ptr(ptr<Derived>&& other) noexcept
+        : data_{std::move(other.data_.data_), other.data_.before_destroyed_}
+    {
+    }
+
+    template <typename Derived,
+              std::enable_if_t<std::is_base_of_v<T, Derived>, int> = 0>
+    ptr& operator=(ptr<Derived>&& other) noexcept
+    {
+        if (this != reinterpret_cast<ptr*>(&other))
+        {
+            reset();
+            if (other.data_)
+            {
+                data_ = std::move(other.data_);
+                other.data_.data_.reset();
+            }
+        }
+        return *this;
+    }
+
     signal<>& before_destroyed()
     {
-        assert(ptr_);
-        return ptr_->before_destroyed_;
+        assert(data_);
+        return data_.before_destroyed_;
     }
 
     void reset() noexcept
     {
-        if (ptr_)
+        if (data_)
         {
-            ptr_->before_destroyed_();
-            ptr_.reset();
+            before_destroyed()();
+            data_.data_.reset();
         }
     };
 
     void operator=(std::nullptr_t) noexcept { reset(); }
 
-    void swap(ptr& other) noexcept { ptr_.swap(other); };
+    T* get() const noexcept { return data_ ? data_.data_.get() : nullptr; }
 
-    T* get() const noexcept { return ptr_ ? &ptr_->obj_ : nullptr; }
-
-    explicit operator bool() const noexcept { return !!ptr_; }
+    explicit operator bool() const noexcept { return !!data_; }
 
     const T& operator*() const noexcept
     {
-        assert(ptr_);
+        assert(data_);
         return *get();
     }
     T& operator*() noexcept
     {
-        assert(ptr_);
+        assert(data_);
         return *get();
     }
 
     const T* operator->() const noexcept
     {
-        assert(ptr_);
+        assert(data_);
         return get();
     }
     T* operator->() noexcept
     {
-        assert(ptr_);
+        assert(data_);
         return get();
     }
 
-    bool operator==(T* ptr) const noexcept { return ptr == ptr_; }
-    bool operator!=(T* ptr) const noexcept { return ptr != ptr_; }
-    bool operator==(std::nullptr_t) const noexcept { return !ptr_; }
-    bool operator!=(std::nullptr_t) const noexcept { return !!ptr_; }
+    bool operator==(T* ptr) const noexcept { return ptr == data_.data_.get(); }
+    bool operator!=(T* ptr) const noexcept { return ptr != data_.data_.get(); }
+    bool operator==(std::nullptr_t) const noexcept { return !data_; }
+    bool operator!=(std::nullptr_t) const noexcept { return !!data_; }
 
     template <typename T2>
     bool operator==(const ptr<T2>& other) const noexcept
     {
-        return ptr_ == other.ptr_;
+        return data_.data_ == other.data_.data_;
     }
     template <typename T2>
     bool operator!=(const ptr<T2>& other) const noexcept
     {
-        return ptr_ != other.ptr_;
+        return data_.data_ != other.data_.data_;
     }
 };
 
@@ -160,7 +197,7 @@ public:
 
     tracking_ptr(const ptr<T>& src) noexcept
         : ptr_{src.get()},
-          before_destroyed_{src ? &src.ptr_->before_destroyed_ : nullptr},
+          before_destroyed_{src ? &src.data_.before_destroyed_ : nullptr},
           destroyed_connection_{connect_destroyed()}
     {
     }
@@ -168,7 +205,7 @@ public:
     template <typename Y>
     tracking_ptr(const ptr<Y>& src) noexcept
         : ptr_{src.get()},
-          before_destroyed_{src ? &src.ptr_->before_destroyed_ : nullptr},
+          before_destroyed_{src ? &src.data_.before_destroyed_ : nullptr},
           destroyed_connection_{connect_destroyed()}
     {
     }
@@ -233,7 +270,7 @@ public:
     }
 
     template <typename Y>
-    tracking_ptr(tracking_ptr<Y>&& other) noexcept //10b
+    tracking_ptr(tracking_ptr<Y>&& other) noexcept // 10b
         : ptr_{other.ptr_},
           before_destroyed_{other.before_destroyed_},
           destroyed_connection_{connect_destroyed()}
@@ -259,7 +296,8 @@ public:
 
 private:
     template <class T2, class U>
-    friend tracking_ptr<T2> static_pointer_cast(const tracking_ptr<U>& r) noexcept;
+    friend tracking_ptr<T2>
+        static_pointer_cast(const tracking_ptr<U>& r) noexcept;
     template <typename T2>
     friend class enable_tracking_from_this;
 
@@ -357,7 +395,7 @@ public:
 
 private:
     template <typename T2>
-    friend struct detail::ptr_data;
+    friend struct detail::obj_with_signal;
 
     signal<> before_destroyed_{};
 };
@@ -365,8 +403,7 @@ private:
 template <typename T, typename... Args>
 ptr<T> make_ptr(Args&&... args)
 {
-    return ptr<T>{
-        std::make_unique<detail::ptr_data<T>>(std::forward<Args>(args)...)};
+    return ptr<T>{detail::make_ptr_data<T>(std::forward<Args>(args)...)};
 }
 
 } // namespace circle

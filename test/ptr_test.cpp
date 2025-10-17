@@ -8,6 +8,11 @@ TEST_CASE("ptr")
     *pint = 5;
     REQUIRE(*pint == 5);
 
+    circle::ptr<std::optional<int>> poptint = circle::make_ptr<std::optional<int>>();
+    *poptint = 5;
+    REQUIRE(*poptint == 5);
+    REQUIRE(**poptint == 5);
+
     SECTION("move constructor")
     {
         auto p2 = std::move(pint);
@@ -26,6 +31,55 @@ TEST_CASE("ptr")
         }
         REQUIRE(destroy1_called == true);
         REQUIRE(destroy2_called == true);
+    }
+
+    SECTION("move constructor with implicit conversion")
+    {
+        struct base
+        {
+            int value{};
+        };
+        struct derived : public base
+        {
+        };
+
+        auto derived_ptr = circle::make_ptr<derived>();
+        derived_ptr->value = 5;
+        auto destroyed = false;
+        derived_ptr.before_destroyed() += [&] { destroyed = true; };
+        circle::ptr<base> base_ptr = std::move(derived_ptr);
+        REQUIRE(!destroyed);
+        REQUIRE(base_ptr->value == 5);
+        base_ptr.reset();
+        REQUIRE(destroyed);
+    }
+
+    SECTION("reset")
+    {
+        pint.reset();
+        REQUIRE(!pint);
+    }
+
+    SECTION("assign nullptr")
+    {
+        pint = nullptr;
+        REQUIRE(!pint);
+    }
+
+    SECTION("get")
+    {
+        std::ignore = pint.get();
+    }
+
+    SECTION("operators")
+    {
+        REQUIRE(poptint->emplace(5) == 5);
+        REQUIRE(poptint->value_or(5) == 5);
+        *poptint = 5;
+        REQUIRE(*poptint == 5);
+        REQUIRE(poptint != nullptr);
+        int b = 5;
+        REQUIRE(pint != &b);
     }
 }
 
@@ -92,6 +146,27 @@ TEST_CASE("tracking_ptr")
             REQUIRE_FALSE(tracking != tracking);
             REQUIRE(tracking2 != tracking);
         }
+    }
+
+    SECTION("tracking to moved")
+    {
+        struct base
+        {
+            virtual int get() const { return 1; }
+        };
+        struct derived : public base
+        {
+            int get() const override { return 2; }
+        };
+
+        auto derived_ptr = circle::make_ptr<derived>();
+        auto tracking = circle::tracking_ptr{derived_ptr};
+        circle::ptr<base> base_ptr = std::move(derived_ptr);
+        REQUIRE(base_ptr->get() == 2);
+        auto destroyed = false;
+        tracking.before_destroyed() += [&] { destroyed = true; };
+        base_ptr.reset();
+        REQUIRE(destroyed);
     }
 }
 
