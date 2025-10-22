@@ -33,6 +33,21 @@ TEST_CASE("ptr")
         REQUIRE(destroy2_called == true);
     }
 
+    SECTION("move assignment")
+    {
+        auto destroy1_called = false;
+        auto destroy2_called = false;
+        pint.before_destroyed().connect([&] { destroy1_called = true; });
+        {
+            auto p2 = circle::ptr<int>{};
+            p2 = std::move(pint);
+            REQUIRE(destroy1_called == false);
+            p2.before_destroyed().connect([&] { destroy2_called = true; });
+        }
+        REQUIRE(destroy1_called == true);
+        REQUIRE(destroy2_called == true);
+    }
+
     SECTION("move constructor with implicit conversion")
     {
         struct base
@@ -178,7 +193,7 @@ struct trackable_base : public circle::enable_tracking_from_this<trackable_base>
 };
 struct trackable_derived : public trackable_base
 {
-    trackable_derived() : tracking_from_constructor{tracking_form_this<trackable_derived>()}
+    trackable_derived() : tracking_from_constructor{tracking_from_this<trackable_derived>()}
     {
         tracking_from_constructor.before_destroyed().connect(
             [this] { on_before_destroyed(); });
@@ -199,9 +214,9 @@ TEST_CASE("tracking from this")
     {
         auto ptr = circle::make_ptr<trackable_derived>();
         circle::tracking_ptr<trackable_base> tracking_base =
-            ptr->tracking_form_this();
+            ptr->tracking_from_this();
         circle::tracking_ptr<trackable_derived> tracking_derived =
-            ptr->tracking_form_this<trackable_derived>();
+            ptr->tracking_from_this<trackable_derived>();
 
         circle::tracking_ptr<trackable_base> tracking_base_copy =
             tracking_derived;

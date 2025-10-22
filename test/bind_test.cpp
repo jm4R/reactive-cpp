@@ -210,7 +210,7 @@ TEST_CASE("binding", "[binding]")
         REQUIRE(b == 10);
     }
 
-    SECTION("all binding tree is up to date during value_changed")
+    SECTION("all binding tree is up to date during value_changed (glitch test)")
     {
         // This test also shows why single `value_changed` signal is not enough
         // and `value_changing` had to be introduced:
