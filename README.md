@@ -1,48 +1,48 @@
 # reactive-cpp
 
+**A powerful yet lightweight C++ library for reactive properties, bindings, and signals.**
+
+A minimal alternative to [RxCpp](https://reactivex.io/RxCpp/) and [LiveCells](https://gutev.dev/live_cells_cpp/) — ideal for MVVM, game logic, tools, and UI frameworks.
+
 Branch          | Appveyor | Codecov |
 :-------------: | -------- | ------- |
 [`master`](https://github.com/jm4R/reactive-cpp/tree/master) | [![Build status](https://ci.appveyor.com/api/projects/status/ix6o5njakdpqvbrl/branch/master?svg=true)](https://ci.appveyor.com/project/jm4R/reactive-cpp/branch/master) | [![codecov](https://codecov.io/gh/jm4R/reactive-cpp/branch/master/graph/badge.svg)](https://codecov.io/gh/jm4R/reactive-cpp) |
 [`develop`](https://github.com/jm4R/reactive-cpp/tree/develop) | [![Build status](https://ci.appveyor.com/api/projects/status/ix6o5njakdpqvbrl/branch/develop?svg=true)](https://ci.appveyor.com/project/jm4R/reactive-cpp/branch/develop) | [![codecov](https://codecov.io/gh/jm4R/reactive-cpp/branch/develop/graph/badge.svg)](https://codecov.io/gh/jm4R/reactive-cpp) |
 
-#### CI build targets
-* g++-10
-* clang-12
-* MSVC++ 2019
-* MSVC++ 2022
-* emscripten 3.1
+## Overview
 
+Modern C++ still lacks a simple way to express:
 
-## Introduction
+- reactive **properties** (`property<T>`)
+- automatic **bindings** between them (`c = a + b`)
+- lightweight **observation** of changes (connections)
+- value-based **reactive state**
+- automatic binding invalidation
 
-C++ property binding library.
+`reactive-cpp` provides exactly this with an API inspired by Qt/QML and functional reactive patterns — but with pure C++ code, without heavy abstractions or generators.
 
-Library needs a deeper documentation, but here's a demo:
+#### Key features:
 
-### Basic types
+- ⚡ **Instant propagation** of dependent values
+- 🧩 **Simple and declarative** usage
+- 📦 **Depandency-free**, STL only
+- 📐 **Perfect for MVVM** (ViewModel properties)
+- 🚀 Suitable for game engines, editors, tools, and real-time apps
+- 💡 [Glitch-free](https://en.wikipedia.org/wiki/Reactive_programming#Glitches) updates
 
-#### circle::signal
+## Core Concepts
 
-```cpp
-using namespace circle;
-signal<int> s;
-s.connect([](int num){ std::cout << "The num is " << num; });
-s.connect([](int num){ std::cout << ", and now the num is still " << num << std::endl; });
-s.emit(2);
-s.emit(-5);
-```
-
-The example prints:
-
-> The num is 2, and now the num is still 2\
-> The num is -5, and now the num is still -5
-
-#### circle::property
+#### property
 
 ```cpp
 using namespace circle;
 property<std::string> p;
-p.value_changed().connect([](const std::string& num){ std::cout << "The text is " << num << std::endl; });
+p.value_changed().connect(
+    [](const std::string& num)
+    {
+        std::cout << "The text is " << num << std::endl;
+    }
+);
 p = "foo";
 p = "foo";
 p = "bar";
@@ -53,7 +53,7 @@ The example prints:
 > The text is foo\
 > The text is bar
 
-#### circle::binding (BIND)
+#### binding
 
 ```cpp
 using namespace circle;
@@ -84,115 +84,90 @@ The example prints:
 > max(120, 75) = 120
 
 
-### Detailed types
-
-When creating a binding, we often encounter the requirement that some object must be alive (eg. not dangling) to be sure that binding is valid. The `std::weak_ptr` could be used in some cases, but it will never guarantee that the binding is fully invalidated, we can only use its state inside a binding logic. It might be more convenient to use following utilities:
-
-#### circle::ptr
-
-It reasembles `std::unique_ptr` logic but has additional signal that informs that the object is about to be destroyed:
+#### signal
 
 ```cpp
 using namespace circle;
-{
-    ptr<int> pint = make_ptr<int>();
-    pint.before_destroyed().connect([](int val) {
-        std::cout << "Value before destroyed: " << val << std::endl;
-    });
-    *pint = 5;
-}
+signal<int> s;
+s.connect([](int num){ std::cout << "The num is " << num; });
+s.connect([](int num){ std::cout << ", and now the num is still " << num << std::endl; });
+s.emit(2);
+s.emit(-5);
 ```
+
 The example prints:
 
-> Value before destroyed: 5
+> The num is 2, and now the num is still 2\
+> The num is -5, and now the num is still -5
 
-#### circle::tracking_ptr
-The `tracking_ptr<T>` can be constructed from `ptr<T>`: it is weak, non-owning ptr that tracks the liftime of origin. It can be tested for underlying object being alive, get underlying value and it also provides `before_destroyed` signal:
+## Installation
 
-```cpp
-using namespace circle;
-{
-    ptr<int> pint = make_ptr<int>();
-    {
-        auto tracking = tracking_ptr{pint};
-        *pint = 10;
-        assert(*tracking == 10);
-        tracking.before_destroyed().connect([](int val) {
-            std::cout << "Value before destroyed: " << val << std::endl;
-        });
-    }
-    *pint = 5;
-}
-```
-The example prints:
+This is a cmake-based project. You can choose simple local integration:
 
-> Value before destroyed: 5
-
-#### Using bindings with ptr/tracking_ptr
-Just like properties, the pointers can also be "captured" by binding expressions. It will not invoke recalculations on pointee change (because no `value_changing`/`value_changed` signals are exposed), but it invalidates the binding before the pointee is destroyed:
-
-
-#### circle::observer
-The `observer<N>` utility is a kind of container of `N` trackable objects (namely `property_ref`s and `tracking_ptr`s). It reports if any of tracked objects is about to be destroyed. It also detects if underlying pointers has `value_changing`/`value_changed` special signals pair and reports it when necessary. It is used internally by `binding` objects but can be used as a separate utility. Here's the example:
-
-```cpp
-    property<int> a = 1;
-    property<long> b = 1;
-    observer obs{&a, &b};
-    long c = a * b;
-
-    // value callback:
-    obs.set_changed_callback(
-        [&c, a = property_ptr{&a}, b = property_ptr{&b}] { c = *a * *b; });
-    assert(c == 1);
-    a = 2;
-    assert(c == 2);
-
-    // destroyed callback:
-    bool destroyed{};
-    obs.set_destroyed_callback([&]{ destroyed = true; });
-    assert(!destroyed);
-
-    {
-        auto b3 = std::move(b2);
-    }
-
-    assert(destroyed);
+```cmake
+add_subdirectory(reactive-cpp)
+target_link_libraries(myapp PRIVATE circle::reactive)
 ```
 
-## Public types
+You can also add `reactive-cpp` via CMake/FetchContent or [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake):
 
-In header `<circle/reactive/signal.hpp>`
+```cmake
+CPMAddPackage("gh:jm4R/reactive-cpp#master")
+target_link_libraries(myapp PRIVATE circle::reactive)
+```
 
-* `signal<Args...>`
-* `connection`
-* `scoped_connection`
-* `connection_blocker`
-* `signal_blocker`
+## CI build targets
+* GCC 10
+* Clang 12
+* MSVC 2019
+* MSVC 2022
+* Emscripten 3.1
 
-In header `<circle/reactive/property.hpp>`
+## Comparison With Similar Libraries
 
-* `property<T>`
-* `property_ref<T>`
-* `value_provider` abstract class
-* `value_provider_ptr` alias
-* `is_property<T>` type trait
+`reactive-cpp` was created because existing C++ reactive libraries solve different problems or introduce limitations that are undesirable in state-based reactive architectures such as MVVM.
 
-In header `<circle/reactive/observer.hpp>`
+### KDBindings
+It began development at roughly the same time as `reactive-cpp`; both projects were motivated by similar gaps in C++ for expressing reactive state and MVVM-style property bindings.
+KDBindings provides property bindings and signals, but at the time `reactive-cpp` was conceived it was **not glitch-free**, meaning that dependent properties could temporarily observe inconsistent intermediate states during update cascades.  
+For applications where correctness and consistency between related properties matters (for example in UI view-models), this behavior can be problematic.
 
-* `observer<N>`
+`reactive-cpp` guarantees **glitch-free updates** by construction: all dependencies are recalculated in a stable order before any observers are notified.
 
-In header `<circle/reactive/connection_handler.hpp>`
 
-* `connection_handler`
-* `AUTO_CONNECT(sig_or_prop, method)` helper macro
+### LiveCells
+LiveCells is conceptually the closest library to `reactive-cpp`, and in many use cases the two could be used interchangeably.  
+Both libraries provide value-based reactivity, automatic propagation, and a declarative model of dependent values.
 
-In header `<circle/reactive/bind.hpp>`
+However, the internal binding mechanisms differ significantly:
 
-* `binding<T, DependentPropertiesOrTrackables...>`
-* `BIND(dependent_list..., expression)` helper macro
+- **LiveCells automatically detects dependencies** by evaluating the lambda and tracking every `cell` access.  
+  This allows very compact syntax, but also permits **dangerous constructions**, such as lambdas that capture objects by reference.  
+  If the captured object goes out of scope, this may lead to **dangling references** inside the reactive graph.
 
-In header `<circle/reactive/ptr.hpp>`
+- **reactive-cpp intentionally avoids automatic dependency discovery.**  
+  Instead, each binding **explicitly lists the properties and objects it depends on**, making the dependency graph fully visible and predictable.  
+  reactive-cpp also includes **safety mechanisms that automatically invalidate a binding when one of its dependencies is destroyed**, preventing use-after-free scenarios.
 
-* `ptr<T>` CRTP class
-* `tracking_ptr<T>`
+In short:  
+LiveCells favors convenience via implicit dependency tracking, while `reactive-cpp` favors **explicitness and safety**, making it more robust for complex or long-lived reactive models.
+
+
+### RxCpp
+RxCpp implements a full ReactiveX-style **stream-based FRP** system, suited for asynchronous flows, event pipelines, schedulers, and time-based operators.  
+It is extremely capable, but operates in a different conceptual domain:  
+**event streams**, not **reactive state**.
+
+`reactive-cpp` focuses exclusively on **value reactivity**:
+
+- stable and deterministic state  
+- glitch-free propagation  
+- straightforward binding relationships  
+- ideal for MVVM, game logic, tools, and UI models
+
+If you need declarative, always-consistent reactive properties rather than observable event streams, `reactive-cpp` offers a lightweight and direct solution.
+
+## 🤝 Who uses reactive-cpp?
+
+Although the library is still young, it is already proving itself in multiple proprietary commercial products.
+An additional UX-focused library built on top of reactive-cpp is also in active development.
