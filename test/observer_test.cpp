@@ -7,14 +7,14 @@ using namespace circle;
 
 TEST_CASE("observer with property")
 {
-    static_assert(std::is_constructible_v<observer<1>, property_ref<int>&>);
-    static_assert(std::is_constructible_v<observer<2>, property_ref<int>&,
+    STATIC_REQUIRE(std::is_constructible_v<observer<1>, property_ref<int>&>);
+    STATIC_REQUIRE(std::is_constructible_v<observer<2>, property_ref<int>&,
                                           property_ref<double>&>);
-    static_assert(!std::is_copy_constructible_v<observer<2>>);
-    static_assert(!std::is_copy_assignable_v<observer<2>>);
-    static_assert(!std::is_move_assignable_v<observer<2>>);
-    static_assert(!std::is_move_constructible_v<observer<2>>);
-    static_assert(!std::is_move_assignable_v<observer<2>>);
+    STATIC_REQUIRE(!std::is_copy_constructible_v<observer<2>>);
+    STATIC_REQUIRE(!std::is_copy_assignable_v<observer<2>>);
+    STATIC_REQUIRE(!std::is_move_assignable_v<observer<2>>);
+    STATIC_REQUIRE(!std::is_move_constructible_v<observer<2>>);
+    STATIC_REQUIRE(!std::is_move_assignable_v<observer<2>>);
 
     property<int> a = 1;
     property<long> b = 1;

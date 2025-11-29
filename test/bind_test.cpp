@@ -14,7 +14,6 @@ struct tracked_test
     int val{};
 };
 
-
 struct test_struct
 {
     property<int> test_member1;
@@ -24,10 +23,10 @@ struct test_struct
 
 TEST_CASE("binding", "[binding]")
 {
-    static_assert(
+    STATIC_REQUIRE(
         std::is_constructible_v<binding<float, property<int>>, property<int>&,
                                 float (*)(const int&)>);
-    static_assert(
+    STATIC_REQUIRE(
         std::is_nothrow_destructible_v<binding<float, property<int>>>);
 
     property<int> a;
@@ -101,7 +100,7 @@ TEST_CASE("binding", "[binding]")
         c = BIND(a, b, a / b);
 
         bool called = false;
-        c.value_changed() += [&]{ called = true; };
+        c.value_changed() += [&] { called = true; };
 
         a = 14;
         REQUIRE(!called);

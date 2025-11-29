@@ -391,7 +391,7 @@ public:
     signal& operator=(signal&&) = default;
 
     template <typename... LArgs>
-    void emit(LArgs&&... largs) const
+    void emit(LArgs&&... largs)
     {
         if (!connections_)
             return;
@@ -400,15 +400,15 @@ public:
     }
 
     template <typename... LArgs>
-    void operator()(LArgs&&... largs) const
+    void operator()(LArgs&&... largs)
     {
         emit(std::forward<LArgs>(largs)...);
     }
 
-    connection connect(slot_type f) { return connect_fun(std::move(f)); }
+    connection connect(slot_type f) const { return connect_fun(std::move(f)); }
 
     template <typename F, typename... LArgs>
-    connection connect(F&& f, LArgs&&... largs)
+    connection connect(F&& f, LArgs&&... largs) const
     {
         slot_type s = [f = std::forward<F>(f), largs...](Args... args) mutable {
             detail::invoke(f, largs..., args...);
@@ -417,22 +417,22 @@ public:
     }
 
     template <typename F>
-    connection operator+=(F&& f)
+    connection operator+=(F&& f) const
     {
         return connect(std::forward<F>(f));
     }
 
-    void disconnect_all()
+    void disconnect_all() const
     {
         if (connections_)
             connections_->disconnect_all();
     }
 
-    bool block(connection c, bool v) { return c.block(v); }
+    bool block(connection c, bool v) const { return c.block(v); }
 
     [[nodiscard]] bool blocked(connection c) const { return c.blocked(); }
 
-    void disconnect(connection c) { c.disconnect(); }
+    void disconnect(connection c) const { c.disconnect(); }
 
     [[nodiscard]] bool owns(connection c) const noexcept
     {
@@ -440,21 +440,21 @@ public:
     }
 
 private:
-    std::shared_ptr<connections_type>& make_connections()
+    std::shared_ptr<connections_type>& make_connections() const
     {
         if (!connections_)
             connections_ = std::make_shared<connections_type>();
         return connections_;
     }
 
-    connection connect_fun(std::function<void(Args...)> f)
+    connection connect_fun(std::function<void(Args...)> f) const
     {
         make_connections();
         return {connections_, connections_->connect(std::move(f))};
     }
 
 private:
-    std::shared_ptr<connections_type> connections_;
+    mutable std::shared_ptr<connections_type> connections_;
 };
 
 class scoped_connection
