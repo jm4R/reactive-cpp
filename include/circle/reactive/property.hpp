@@ -149,10 +149,10 @@ public:
 
     const T* operator->() const { return &get(); }
 
-    signal<property&>& value_changing() const { return value_changing_; }
-    signal<property&>& value_changed() const { return value_changed_; }
-    signal<property&>& moved() const { return moved_; }
-    signal<property&>& before_destroyed() const { return before_destroyed_; }
+    const signal<property&>& value_changing() const { return value_changing_; }
+    const signal<property&>& value_changed() const { return value_changed_; }
+    const signal<property&>& moved() const { return moved_; }
+    const signal<property&>& before_destroyed() const { return before_destroyed_; }
 
     template <typename F, typename... LArgs>
     connection connect(F&& f, LArgs&&... largs) const
@@ -175,10 +175,9 @@ public:
 private:
     void on_provider_updated()
     {
-        if (value_changed_by_provider_)
+        if (std::exchange(value_changed_by_provider_, false))
         {
             value_changed_.emit(*this);
-            value_changed_by_provider_ = false;
         }
     }
 
@@ -218,16 +217,16 @@ private:
     T value_{};
     value_provider_ptr<T> provider_;
     scoped_connection provider_observer_;
-    mutable signal<property&> value_changing_;
-    mutable signal<property&> value_changed_;
-    mutable signal<property&> moved_;
-    mutable signal<property&> before_destroyed_;
+    signal<property&> value_changing_;
+    signal<property&> value_changed_;
+    signal<property&> moved_;
+    signal<property&> before_destroyed_;
 
     bool value_changed_by_provider_{};
 };
 
 template <typename T>
-class property_ref // read-only for now
+class property_ref
 {
 public:
     using value_type = T;

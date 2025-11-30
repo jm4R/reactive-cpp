@@ -498,7 +498,7 @@ class signal_blocker
 {
 public:
     template <typename... Args>
-    signal_blocker(signal<Args...>& s) noexcept
+    signal_blocker(const signal<Args...>& s) noexcept
         : connections_{s.make_connections()},
           state_{s.connections_->block_all(true) ? state::was_blocked
                                                  : state::wasnt_blocked}
@@ -556,7 +556,7 @@ struct is_any_signal<signal<Args...>> : std::true_type
 };
 
 template <typename T>
-concept is_signal = is_any_signal<std::remove_reference_t<T>>::value;
+concept is_signal = is_any_signal<std::remove_cvref_t<T>>::value;
 
 } // namespace circle
 

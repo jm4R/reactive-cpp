@@ -2,7 +2,7 @@
 
 #include <circle/reactive/property.hpp>
 
-#include <array>
+#include <tuple>
 
 namespace circle {
 
@@ -42,7 +42,7 @@ private:
     {
         return detail::transaction_entry<T>{
             .changing_blocker = signal_blocker{p.value_changing()},
-            .changed_blocker = {p.value_changed()},
+            .changed_blocker = signal_blocker{p.value_changed()},
             .reference = p,
             .start_value = p.get(),
         };
@@ -54,7 +54,9 @@ private:
         p.changing_blocker.dismiss();
         if (!detail::eq(p.reference.get(), p.start_value))
         {
-            p.reference.value_changing().emit(p.reference);
+            const auto& sig = p.reference.value_changing();
+            auto& m_sig = const_cast<std::remove_cvref_t<decltype(sig)>&>(sig);
+            m_sig.emit(p.reference);
         }
     }
     template <typename T>
@@ -63,7 +65,9 @@ private:
         p.changed_blocker.dismiss();
         if (!detail::eq(p.reference.get(), p.start_value))
         {
-            p.reference.value_changed().emit(p.reference);
+            const auto& sig = p.reference.value_changed();
+            auto& m_sig = const_cast<std::remove_cvref_t<decltype(sig)>&>(sig);
+            m_sig.emit(p.reference);
         }
     }
 
