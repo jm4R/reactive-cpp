@@ -60,7 +60,7 @@ ptr_data<T> make_ptr_data(Args&&... args)
     auto ows =
         std::make_shared<obj_with_signal<T>>(std::forward<Args>(args)...);
     auto obj_ptr = std::shared_ptr<T>{ows, &ows->obj_}; // aliasing constructor
-    return ptr_data{std::move(obj_ptr), &ows->before_destroyed_};
+    return {std::move(obj_ptr), &ows->before_destroyed_};
 }
 
 } // namespace detail
