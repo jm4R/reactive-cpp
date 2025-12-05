@@ -218,16 +218,19 @@ TEST_CASE("property")
     {
         comparable_enum_class val{2};
         property pval = comparable_enum_class{3};
-        REQUIRE(val < pval);
-        REQUIRE(val != pval);
-        REQUIRE_FALSE(val == pval);
-        REQUIRE(pval > val);
-        REQUIRE(pval != val);
-        REQUIRE_FALSE(pval == val);
-        REQUIRE(pval == pval);
-        REQUIRE(pval <= pval);
-        REQUIRE_FALSE(pval < pval);
-        REQUIRE_FALSE(pval != pval);
+
+        // Double parenthesis are intentional to avoid interfering with Catch2
+        // internal operators
+        REQUIRE((val < pval));
+        REQUIRE((val != pval));
+        REQUIRE_FALSE((val == pval));
+        REQUIRE((pval > val));
+        REQUIRE((pval != val));
+        REQUIRE_FALSE((pval == val));
+        REQUIRE((pval == pval));
+        REQUIRE((pval <= pval));
+        REQUIRE_FALSE((pval < pval));
+        REQUIRE_FALSE((pval != pval));
     }
 }
 

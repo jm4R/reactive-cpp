@@ -172,10 +172,21 @@ public:
         value_changed_ += std::forward<F>(f);
     }
 
-    template <typename U>
-    auto operator<=>(const U& other) const
+    // Workaround for MSVC bug / comparing property<scoped enum>
+    // https://developercommunity.visualstudio.com/t/scoped-enum-compared-against-a-class-wit/10061024
+    friend constexpr bool operator==(const property& a, const property& b)
     {
-        return get() <=> other;
+        return a.get() == b.get();
+    }
+
+    friend constexpr bool operator==(const T& a, const property& b)
+    {
+        return a == b.get();
+    }
+
+    friend constexpr bool operator==(const property& a, const T& b)
+    {
+        return a.get() == b;
     }
 
 private:
