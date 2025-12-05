@@ -172,6 +172,12 @@ public:
         value_changed_ += std::forward<F>(f);
     }
 
+    template <typename U>
+    auto operator<=>(const U& other) const
+    {
+        return get() <=> other;
+    }
+
 private:
     void on_provider_updated()
     {

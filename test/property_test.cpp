@@ -12,6 +12,14 @@ struct noncomparable
     int b;
 };
 
+enum class comparable_enum_class : std::int64_t
+{
+};
+constexpr auto operator<=>(comparable_enum_class a, comparable_enum_class b)
+{
+    return static_cast<std::int64_t>(a) <=> static_cast<std::int64_t>(b);
+}
+
 TEST_CASE("property")
 {
     STATIC_REQUIRE(
@@ -204,6 +212,22 @@ TEST_CASE("property")
         val[0] = 1.0f;
         p = val;
         REQUIRE(p->data() == raw);
+    }
+
+    SECTION("comparison operators")
+    {
+        comparable_enum_class val{2};
+        property pval = comparable_enum_class{3};
+        REQUIRE(val < pval);
+        REQUIRE(val != pval);
+        REQUIRE_FALSE(val == pval);
+        REQUIRE(pval > val);
+        REQUIRE(pval != val);
+        REQUIRE_FALSE(pval == val);
+        REQUIRE(pval == pval);
+        REQUIRE(pval <= pval);
+        REQUIRE_FALSE(pval < pval);
+        REQUIRE_FALSE(pval != pval);
     }
 }
 
