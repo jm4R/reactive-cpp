@@ -149,10 +149,6 @@ However, the internal binding mechanisms differ significantly:
   Instead, each binding **explicitly lists the properties and objects it depends on**, making the dependency graph fully visible and predictable.  
   reactive-cpp also includes **safety mechanisms that automatically invalidate a binding when one of its dependencies is destroyed**, preventing use-after-free scenarios.
 
-In short:  
-LiveCells favors convenience via implicit dependency tracking, while `reactive-cpp` favors **explicitness and safety**, making it more robust for complex or long-lived reactive models.
-
-
 ### RxCpp
 RxCpp implements a full ReactiveX-style **stream-based FRP** system, suited for asynchronous flows, event pipelines, schedulers, and time-based operators.  
 It is extremely capable, but operates in a different conceptual domain:  
@@ -167,7 +163,7 @@ It is extremely capable, but operates in a different conceptual domain:
 
 If you need declarative, always-consistent reactive properties rather than observable event streams, `reactive-cpp` offers a lightweight and direct solution.
 
-## 🤝 Who uses reactive-cpp?
+## Is this library production-ready?
 
-Although the library is still young, it is already proving itself in multiple proprietary commercial products.
-An additional UX-focused library built on top of reactive-cpp is also in active development.
+Although the library is still young, it is already proving itself in some proprietary commercial products.
+Feel free to report any bugs, suggestions & feedback.
