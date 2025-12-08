@@ -2,29 +2,18 @@
 
 #include <circle/reactive/signal.hpp>
 
+#include <concepts>
 #include <functional>
 #include <memory>
 
 namespace circle {
 
 namespace detail {
-template <typename T, typename = bool>
-struct is_equality_comparable : std::false_type
-{
-};
-
-template <typename T>
-struct is_equality_comparable<
-    T, typename std::enable_if_t<true, decltype(std::declval<const T&>() ==
-                                                std::declval<const T&>())>>
-    : std::true_type
-{
-};
 
 template <typename T>
 constexpr bool eq(const T& v1, const T& v2)
 {
-    if constexpr (is_equality_comparable<T>::value)
+    if constexpr (std::equality_comparable<T>)
     {
         return v1 == v2;
     }
@@ -61,8 +50,17 @@ public:
     property(T value) noexcept : value_{std::move(value)} {}
     property(value_provider_ptr<T> provider) { assign(std::move(provider)); }
 
+#ifdef CIRCLE_PROPERTY_NONCOPYABLE
     property(const property&) = delete;
     property& operator=(const property&) = delete;
+#else
+    property(const property& p) noexcept : value_{p.get()} {}
+    property& operator=(const property& p)
+    {
+        *this = *p;
+        return *this;
+    }
+#endif
 
     ~property() { before_destroyed_.emit(*this); }
 
@@ -149,21 +147,15 @@ public:
         return false;
     }
 
-    const T& get() const
-    {
-        return value_;
-    }
+    constexpr const T& get() const noexcept { return value_; }
+    constexpr const T& operator*() const noexcept { return get(); }
+    constexpr operator const T&() const noexcept { return get(); }
+    constexpr const T* operator->() const noexcept { return &get(); }
 
-    const T& operator*() const { return get(); }
-
-    operator const T&() const { return get(); }
-
-    const T* operator->() const { return &get(); }
-
-    signal<property&>& value_changing() const { return value_changing_; }
-    signal<property&>& value_changed() const { return value_changed_; }
-    signal<property&>& moved() const { return moved_; }
-    signal<property&>& before_destroyed() const { return before_destroyed_; }
+    const signal<property&>& value_changing() const { return value_changing_; }
+    const signal<property&>& value_changed() const { return value_changed_; }
+    const signal<property&>& moved() const { return moved_; }
+    const signal<property&>& before_destroyed() const { return before_destroyed_; }
 
     template <typename F, typename... LArgs>
     connection connect(F&& f, LArgs&&... largs) const
@@ -183,13 +175,29 @@ public:
         value_changed_ += std::forward<F>(f);
     }
 
+    // Workaround for MSVC bug / comparing property<scoped enum>
+    // https://developercommunity.visualstudio.com/t/scoped-enum-compared-against-a-class-wit/10061024
+    friend constexpr bool operator==(const property& a, const property& b)
+    {
+        return a.get() == b.get();
+    }
+
+    friend constexpr bool operator==(const T& a, const property& b)
+    {
+        return a == b.get();
+    }
+
+    friend constexpr bool operator==(const property& a, const T& b)
+    {
+        return a.get() == b;
+    }
+
 private:
     void on_provider_updated()
     {
-        if (value_changed_by_provider_)
+        if (std::exchange(value_changed_by_provider_, false))
         {
             value_changed_.emit(*this);
-            value_changed_by_provider_ = false;
         }
     }
 
@@ -229,16 +237,16 @@ private:
     T value_{};
     value_provider_ptr<T> provider_;
     scoped_connection provider_observer_;
-    mutable signal<property&> value_changing_;
-    mutable signal<property&> value_changed_;
-    mutable signal<property&> moved_;
-    mutable signal<property&> before_destroyed_;
+    signal<property&> value_changing_;
+    signal<property&> value_changed_;
+    signal<property&> moved_;
+    signal<property&> before_destroyed_;
 
     bool value_changed_by_provider_{};
 };
 
 template <typename T>
-class property_ref // read-only for now
+class property_ref
 {
 public:
     using value_type = T;

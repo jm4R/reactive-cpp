@@ -18,14 +18,20 @@ struct derived : public base
 {
 };
 
+template <typename S, typename... Args>
+constexpr bool can_emit = requires(S s)
+{
+    s.emit(Args{}...);
+};
+
 TEST_CASE("signal")
 {
-    static_assert(
+    STATIC_REQUIRE(
         std::is_nothrow_default_constructible_v<signal<int, std::string>>);
-    static_assert(
+    STATIC_REQUIRE(
         std::is_nothrow_move_constructible_v<signal<int, std::string>>);
-    static_assert(std::is_nothrow_move_assignable_v<signal<int, std::string>>);
-    static_assert(std::is_nothrow_destructible_v<signal<int, std::string>>);
+    STATIC_REQUIRE(std::is_nothrow_move_assignable_v<signal<int, std::string>>);
+    STATIC_REQUIRE(std::is_nothrow_destructible_v<signal<int, std::string>>);
 
     SECTION("empty")
     {
@@ -82,7 +88,20 @@ TEST_CASE("signal")
         s.connect(&lstr::foo, &obj);
         REQUIRE(obj.res == 0);
         s.emit(5);
+        STATIC_REQUIRE(can_emit<signal<int>, int>);
+        STATIC_REQUIRE_FALSE(can_emit<const signal<int>, int>);
         REQUIRE(obj.res == 5);
+    }
+
+    SECTION("connect to const signal")
+    {
+        int res{};
+
+        signal<int> s;
+        std::as_const(s).connect([&](int v) { res = v; });
+        REQUIRE(res == 0);
+        s.emit(5);
+        REQUIRE(res == 5);
     }
 
     SECTION("makes deep copy of functor")
@@ -344,7 +363,7 @@ TEST_CASE("signal")
 
 TEST_CASE("signal_blocker")
 {
-    static_assert(
+    STATIC_REQUIRE(
         std::is_nothrow_constructible_v<signal_blocker, signal<int>&>);
 
     int res1{};
@@ -411,12 +430,12 @@ TEST_CASE("signal_blocker")
 
 TEST_CASE("connection")
 {
-    static_assert(std::is_nothrow_default_constructible_v<connection>);
-    static_assert(std::is_nothrow_move_constructible_v<connection>);
-    static_assert(std::is_nothrow_move_assignable_v<connection>);
-    static_assert(std::is_nothrow_copy_constructible_v<connection>);
-    static_assert(std::is_nothrow_copy_assignable_v<connection>);
-    static_assert(std::is_nothrow_destructible_v<connection>);
+    STATIC_REQUIRE(std::is_nothrow_default_constructible_v<connection>);
+    STATIC_REQUIRE(std::is_nothrow_move_constructible_v<connection>);
+    STATIC_REQUIRE(std::is_nothrow_move_assignable_v<connection>);
+    STATIC_REQUIRE(std::is_nothrow_copy_constructible_v<connection>);
+    STATIC_REQUIRE(std::is_nothrow_copy_assignable_v<connection>);
+    STATIC_REQUIRE(std::is_nothrow_destructible_v<connection>);
     SECTION("empty")
     {
         connection c;
@@ -663,10 +682,10 @@ TEST_CASE("connection")
 
 TEST_CASE("scoped_connection")
 {
-    static_assert(std::is_nothrow_default_constructible_v<scoped_connection>);
-    static_assert(std::is_nothrow_move_constructible_v<scoped_connection>);
-    static_assert(std::is_nothrow_move_assignable_v<scoped_connection>);
-    static_assert(std::is_nothrow_destructible_v<scoped_connection>);
+    STATIC_REQUIRE(std::is_nothrow_default_constructible_v<scoped_connection>);
+    STATIC_REQUIRE(std::is_nothrow_move_constructible_v<scoped_connection>);
+    STATIC_REQUIRE(std::is_nothrow_move_assignable_v<scoped_connection>);
+    STATIC_REQUIRE(std::is_nothrow_destructible_v<scoped_connection>);
     SECTION("simple")
     {
         int res{};
@@ -742,9 +761,9 @@ TEST_CASE("scoped_connection")
 
 TEST_CASE("connection_blocker")
 {
-    static_assert(
+    STATIC_REQUIRE(
         std::is_nothrow_constructible_v<connection_blocker, connection>);
-    static_assert(std::is_nothrow_destructible_v<signal<int, std::string>>);
+    STATIC_REQUIRE(std::is_nothrow_destructible_v<signal<int, std::string>>);
 
     int res{};
 

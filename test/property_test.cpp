@@ -12,13 +12,21 @@ struct noncomparable
     int b;
 };
 
+enum class comparable_enum_class : std::int64_t
+{
+};
+constexpr auto operator<=>(comparable_enum_class a, comparable_enum_class b)
+{
+    return static_cast<std::int64_t>(a) <=> static_cast<std::int64_t>(b);
+}
+
 TEST_CASE("property")
 {
-    static_assert(
+    STATIC_REQUIRE(
         std::is_nothrow_default_constructible_v<property<std::string>>);
-    static_assert(std::is_nothrow_move_constructible_v<property<std::string>>);
-    static_assert(std::is_nothrow_move_assignable_v<property<std::string>>);
-    static_assert(std::is_nothrow_destructible_v<property<std::string>>);
+    STATIC_REQUIRE(std::is_nothrow_move_constructible_v<property<std::string>>);
+    STATIC_REQUIRE(std::is_nothrow_move_assignable_v<property<std::string>>);
+    STATIC_REQUIRE(std::is_nothrow_destructible_v<property<std::string>>);
 
     SECTION("default-constructed")
     {
@@ -83,9 +91,7 @@ TEST_CASE("property")
         REQUIRE(call_count == 1);
 
         bool changed = false;
-        p |= [&]() {
-            changed = true;
-        };
+        p |= [&]() { changed = true; };
         REQUIRE(changed);
         REQUIRE(call_count == 1);
     }
@@ -179,9 +185,7 @@ TEST_CASE("property")
             const auto& const_p = p;
 
             int new_value = 0;
-            const_p.value_changed().connect([&](int val) {
-                new_value = val;
-            });
+            const_p.value_changed().connect([&](int val) { new_value = val; });
             p = 5;
             REQUIRE(new_value == 5);
         }
@@ -208,6 +212,25 @@ TEST_CASE("property")
         val[0] = 1.0f;
         p = val;
         REQUIRE(p->data() == raw);
+    }
+
+    SECTION("comparison operators")
+    {
+        comparable_enum_class val{2};
+        property pval = comparable_enum_class{3};
+
+        // Double parenthesis are intentional to avoid interfering with Catch2
+        // internal operators
+        REQUIRE((val < pval));
+        REQUIRE((val != pval));
+        REQUIRE_FALSE((val == pval));
+        REQUIRE((pval > val));
+        REQUIRE((pval != val));
+        REQUIRE_FALSE((pval == val));
+        REQUIRE((pval == pval));
+        REQUIRE((pval <= pval));
+        REQUIRE_FALSE((pval < pval));
+        REQUIRE_FALSE((pval != pval));
     }
 }
 

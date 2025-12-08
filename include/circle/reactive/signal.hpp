@@ -24,24 +24,15 @@ namespace circle {
 namespace detail {
 
 template <std::size_t... Is, typename F, typename Tuple>
-constexpr void invoke_impl(
-    std::index_sequence<Is...>, F&& f, Tuple&& args,
-    std::enable_if_t<std::is_invocable_v<F, std::tuple_element_t<Is, Tuple>...>,
-                     void>* = nullptr)
+constexpr void invoke_impl(std::index_sequence<Is...>, F&& f, Tuple&& args)
 {
-    std::invoke(std::forward<F>(f), std::get<Is>(args)...);
-}
-
-template <std::size_t... Is, typename F, typename Tuple>
-constexpr void invoke_impl(
-    std::index_sequence<Is...>, F&& f, Tuple&& args,
-    std::enable_if_t<
-        !std::is_invocable_v<F, std::tuple_element_t<Is, Tuple>...>, void>* =
-        nullptr)
-{
-    static_assert(sizeof...(Is) > 0, "Not invocable with arguments supplied");
-    if constexpr (sizeof...(Is) > 0)
+    if constexpr (std::is_invocable_v<F, std::tuple_element_t<Is, Tuple>...>)
     {
+        std::invoke(std::forward<F>(f), std::get<Is>(args)...);
+    }
+    else if constexpr (sizeof...(Is) > 0)
+    {
+        static_assert(sizeof...(Is) > 0, "Not invocable with arguments supplied");
         invoke_impl(std::make_index_sequence<sizeof...(Is) - 1>(),
                     std::forward<F>(f), std::move(args));
     }
@@ -51,8 +42,16 @@ constexpr void invoke_impl(
 template <typename F, typename... Args>
 constexpr void invoke(F&& f, Args&&... args)
 {
-    invoke_impl(std::make_index_sequence<sizeof...(Args)>(), std::forward<F>(f),
-                std::forward_as_tuple(std::forward<Args>(args)...));
+    if constexpr (std::is_invocable_v<F, Args...>)
+    {
+        std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    }
+    else
+    {
+        invoke_impl(std::make_index_sequence<sizeof...(Args) - 1>(),
+                    std::forward<F>(f),
+                    std::forward_as_tuple(std::forward<Args>(args)...));
+    }
 }
 
 struct increment_guard
@@ -344,7 +343,7 @@ public:
     {
         if (!c.active())
             CIRCLE_WARN("Creating connection_blocker on inactive connection");
-        was_ = c.block(true);
+        state_ = c.block(true) ? state::was_blocked : state::wasnt_blocked;
     }
 
     connection_blocker(const connection_blocker&) = delete;
@@ -352,10 +351,25 @@ public:
     connection_blocker(connection_blocker&&) = delete;
     connection_blocker operator==(connection_blocker&&) = delete;
 
-    ~connection_blocker() { connection_.block(was_); }
+    ~connection_blocker() { dismiss(); }
+
+    void dismiss()
+    {
+        if (state_ != state::dismissed)
+        {
+            connection_.block(state_ == state::was_blocked);
+            state_ = state::dismissed;
+        }
+    }
 
 private:
-    bool was_;
+    enum class state : char
+    {
+        wasnt_blocked,
+        was_blocked,
+        dismissed
+    };
+    state state_;
     connection connection_;
 };
 
@@ -377,7 +391,7 @@ public:
     signal& operator=(signal&&) = default;
 
     template <typename... LArgs>
-    void emit(LArgs&&... largs) const
+    void emit(LArgs&&... largs)
     {
         if (!connections_)
             return;
@@ -386,15 +400,15 @@ public:
     }
 
     template <typename... LArgs>
-    void operator()(LArgs&&... largs) const
+    void operator()(LArgs&&... largs)
     {
         emit(std::forward<LArgs>(largs)...);
     }
 
-    connection connect(slot_type f) { return connect_fun(std::move(f)); }
+    connection connect(slot_type f) const { return connect_fun(std::move(f)); }
 
     template <typename F, typename... LArgs>
-    connection connect(F&& f, LArgs&&... largs)
+    connection connect(F&& f, LArgs&&... largs) const
     {
         slot_type s = [f = std::forward<F>(f), largs...](Args... args) mutable {
             detail::invoke(f, largs..., args...);
@@ -403,22 +417,22 @@ public:
     }
 
     template <typename F>
-    connection operator+=(F&& f)
+    connection operator+=(F&& f) const
     {
         return connect(std::forward<F>(f));
     }
 
-    void disconnect_all()
+    void disconnect_all() const
     {
         if (connections_)
             connections_->disconnect_all();
     }
 
-    bool block(connection c, bool v) { return c.block(v); }
+    bool block(connection c, bool v) const { return c.block(v); }
 
     [[nodiscard]] bool blocked(connection c) const { return c.blocked(); }
 
-    void disconnect(connection c) { c.disconnect(); }
+    void disconnect(connection c) const { c.disconnect(); }
 
     [[nodiscard]] bool owns(connection c) const noexcept
     {
@@ -426,21 +440,21 @@ public:
     }
 
 private:
-    std::shared_ptr<connections_type>& make_connections()
+    std::shared_ptr<connections_type>& make_connections() const
     {
         if (!connections_)
             connections_ = std::make_shared<connections_type>();
         return connections_;
     }
 
-    connection connect_fun(std::function<void(Args...)> f)
+    connection connect_fun(std::function<void(Args...)> f) const
     {
         make_connections();
         return {connections_, connections_->connect(std::move(f))};
     }
 
 private:
-    std::shared_ptr<connections_type> connections_;
+    mutable std::shared_ptr<connections_type> connections_;
 };
 
 class scoped_connection
@@ -484,39 +498,65 @@ class signal_blocker
 {
 public:
     template <typename... Args>
-    signal_blocker(signal<Args...>& s) noexcept
+    signal_blocker(const signal<Args...>& s) noexcept
         : connections_{s.make_connections()},
-          was_{s.connections_->block_all(true)}
+          state_{s.connections_->block_all(true) ? state::was_blocked
+                                                 : state::wasnt_blocked}
     {
     }
 
     signal_blocker(const signal_blocker&) = delete;
     signal_blocker& operator=(const signal_blocker&) = delete;
-    signal_blocker(signal_blocker&&) = delete;
-    signal_blocker operator==(signal_blocker&&) = delete;
 
-    ~signal_blocker()
+    signal_blocker(signal_blocker&& other) noexcept
+        : connections_{std::move(other.connections_)},
+          state_{std::exchange(other.state_, state::dismissed)}
     {
-        if (auto connections = connections_.lock())
+    }
+    signal_blocker& operator==(signal_blocker&& other) noexcept
+    {
+        connections_ = std::move(other.connections_);
+        state_ = std::exchange(other.state_, state::dismissed);
+        return *this;
+    }
+
+    ~signal_blocker() { dismiss(); }
+
+    void dismiss()
+    {
+        if (state_ != state::dismissed)
         {
-            connections->block_all(was_);
+            if (auto connections = connections_.lock())
+            {
+                connections->block_all(state_ == state::was_blocked);
+            }
+            state_ = state::dismissed;
         }
     }
 
 private:
     std::weak_ptr<detail::connections_container_base> connections_;
-    bool was_;
+    enum class state : char
+    {
+        wasnt_blocked,
+        was_blocked,
+        dismissed
+    };
+    state state_;
 };
 
 template <typename... Args>
-struct is_signal : std::false_type
+struct is_any_signal : std::false_type
 {
 };
 
 template <typename... Args>
-struct is_signal<signal<Args...>> : std::true_type
+struct is_any_signal<signal<Args...>> : std::true_type
 {
 };
+
+template <typename T>
+concept is_signal = is_any_signal<std::remove_cvref_t<T>>::value;
 
 } // namespace circle
 
