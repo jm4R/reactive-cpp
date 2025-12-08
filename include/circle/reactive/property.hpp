@@ -50,8 +50,17 @@ public:
     property(T value) noexcept : value_{std::move(value)} {}
     property(value_provider_ptr<T> provider) { assign(std::move(provider)); }
 
+#ifdef CIRCLE_PROPERTY_NONCOPYABLE
     property(const property&) = delete;
     property& operator=(const property&) = delete;
+#else
+    property(const property& p) noexcept : value_{p.get()} {}
+    property& operator=(const property& p)
+    {
+        *this = *p;
+        return *this;
+    }
+#endif
 
     ~property() { before_destroyed_.emit(*this); }
 
@@ -138,16 +147,10 @@ public:
         return false;
     }
 
-    const T& get() const
-    {
-        return value_;
-    }
-
-    const T& operator*() const { return get(); }
-
-    operator const T&() const { return get(); }
-
-    const T* operator->() const { return &get(); }
+    constexpr const T& get() const noexcept { return value_; }
+    constexpr const T& operator*() const noexcept { return get(); }
+    constexpr operator const T&() const noexcept { return get(); }
+    constexpr const T* operator->() const noexcept { return &get(); }
 
     const signal<property&>& value_changing() const { return value_changing_; }
     const signal<property&>& value_changed() const { return value_changed_; }
