@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 using namespace circle;
 
@@ -19,10 +20,7 @@ struct derived : public base
 };
 
 template <typename S, typename... Args>
-constexpr bool can_emit = requires(S s)
-{
-    s.emit(Args{}...);
-};
+constexpr bool can_emit = requires(S s) { s.emit(Args{}...); };
 
 TEST_CASE("signal")
 {
@@ -200,6 +198,24 @@ TEST_CASE("signal")
         s.emit(5);
         REQUIRE(res == 1105);
         a = 0;
+        s.emit(6);
+        REQUIRE(res == 1106);
+    }
+
+    SECTION("provide first parameters by r-value")
+    {
+        int res{};
+
+        signal<int> s;
+        std::vector<int> a;
+        a.assign(50, 1000);
+        s.connect([&](const std::vector<int> a, int b,
+                      int v) { res = a[49] + b + v; },
+                  a, 100);
+        a.clear();
+        REQUIRE(res == 0);
+        s.emit(5);
+        REQUIRE(res == 1105);
         s.emit(6);
         REQUIRE(res == 1106);
     }

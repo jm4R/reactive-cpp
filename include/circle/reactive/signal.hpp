@@ -412,10 +412,11 @@ public:
     connection connect(slot_type f) const { return connect_fun(std::move(f)); }
 
     template <typename F, typename... LArgs>
-    connection connect(F&& f, LArgs&&... largs) const
+    connection connect(F&& f, LArgs... largs) const
     {
-        slot_type s = [f = std::forward<F>(f), largs...](Args... args) mutable {
-            detail::invoke(f, largs..., args...);
+        slot_type s = [f = std::forward<F>(f),
+                       ... l = std::move(largs)](Args... args) mutable {
+            detail::invoke(f, l..., args...);
         };
         return connect_fun(std::move(s));
     }
