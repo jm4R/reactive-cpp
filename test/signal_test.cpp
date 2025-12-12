@@ -598,6 +598,26 @@ TEST_CASE("connection")
         REQUIRE(res == 2);
     }
 
+    SECTION("disconnect_all removes pending connections")
+    {
+        signal<> s;
+        int primary_called{};
+        int pending_called{};
+
+        s.connect([&] {
+            ++primary_called;
+            s.connect([&] { ++pending_called; });
+            s.disconnect_all();
+        });
+
+        s.emit();
+        REQUIRE(primary_called == 1);
+
+        s.emit();
+        REQUIRE(primary_called == 1);
+        REQUIRE(pending_called == 0);
+    }
+
     SECTION("disconnect not-invoked during iteration")
     {
         int res1{};

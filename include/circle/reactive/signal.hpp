@@ -186,6 +186,10 @@ public:
             {
                 disconnect(c);
             }
+            for (auto& c : new_connections_)
+            {
+                disconnect(c);
+            }
         }
     }
 
