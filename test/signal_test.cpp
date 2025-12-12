@@ -365,6 +365,7 @@ TEST_CASE("signal_blocker")
 {
     STATIC_REQUIRE(
         std::is_nothrow_constructible_v<signal_blocker, signal<int>&>);
+    STATIC_REQUIRE(std::is_move_assignable_v<signal_blocker>);
 
     int res1{};
     int res2{};
@@ -425,6 +426,28 @@ TEST_CASE("signal_blocker")
         s.emit(25);
         REQUIRE(res1 == 25);
         REQUIRE(res2 == 5);
+    }
+
+    SECTION("move assignment keeps connections blocked")
+    {
+        {
+            signal_blocker blocker1{s};
+            signal_blocker blocker2{s};
+
+            blocker2 = std::move(blocker1);
+            s.emit(30);
+
+            REQUIRE(res1 == 5);
+            REQUIRE(res2 == 5);
+            REQUIRE(c1.blocked());
+            REQUIRE(c2.blocked());
+        }
+
+        REQUIRE_FALSE(c1.blocked());
+        REQUIRE_FALSE(c2.blocked());
+        s.emit(35);
+        REQUIRE(res1 == 35);
+        REQUIRE(res2 == 35);
     }
 }
 

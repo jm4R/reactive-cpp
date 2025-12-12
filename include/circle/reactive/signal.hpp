@@ -353,7 +353,7 @@ public:
     connection_blocker(const connection_blocker&) = delete;
     connection_blocker& operator=(const connection_blocker&) = delete;
     connection_blocker(connection_blocker&&) = delete;
-    connection_blocker operator==(connection_blocker&&) = delete;
+    connection_blocker operator=(connection_blocker&&) = delete;
 
     ~connection_blocker() { dismiss(); }
 
@@ -517,7 +517,7 @@ public:
           state_{std::exchange(other.state_, state::dismissed)}
     {
     }
-    signal_blocker& operator==(signal_blocker&& other) noexcept
+    signal_blocker& operator=(signal_blocker&& other) noexcept
     {
         connections_ = std::move(other.connections_);
         state_ = std::exchange(other.state_, state::dismissed);
