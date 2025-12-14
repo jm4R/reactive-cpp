@@ -353,6 +353,22 @@ TEST_CASE("signal")
         }
     }
 
+    SECTION("pending emission visible inside handler")
+    {
+        signal<int> s;
+        bool called = false;
+
+        s.connect([&](int) {
+            REQUIRE(s.pending_emission());
+            called = true;
+        });
+
+        REQUIRE_FALSE(s.pending_emission());
+        s.emit(1);
+        REQUIRE(called);
+        REQUIRE_FALSE(s.pending_emission());
+    }
+
     SECTION("emitting with r-value should call all slots with a copy")
     {
         signal<std::string> s;

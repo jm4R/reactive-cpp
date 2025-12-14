@@ -253,6 +253,8 @@ public:
         return CIRCLE_WARN_VAL(true, "Checking inactive connection if blocked");
     }
 
+    [[nodiscard]] auto iterations_depth() const { return iterations_depth_; }
+
 private:
     void post_invoke()
     {
@@ -442,6 +444,11 @@ public:
     [[nodiscard]] bool owns(connection c) const noexcept
     {
         return c.active() && c.connections_.lock() == connections_;
+    }
+
+    [[nodiscard]] bool pending_emission() const
+    {
+        return connections_ && connections_->iterations_depth() != 0;
     }
 
 private:
