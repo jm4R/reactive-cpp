@@ -75,6 +75,19 @@ TEST_CASE("ptr")
         REQUIRE(!pint);
     }
 
+    SECTION("resetting during resetting is NOOP")
+    {
+        int call_count = 0;
+        pint.before_destroyed().connect([&] {
+            ++call_count;
+            pint.reset();
+        });
+
+        pint.reset();
+        REQUIRE(call_count == 1);
+        REQUIRE(!pint);
+    }
+
     SECTION("assign nullptr")
     {
         pint = nullptr;

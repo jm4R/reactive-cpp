@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 using namespace circle;
 
@@ -19,10 +20,7 @@ struct derived : public base
 };
 
 template <typename S, typename... Args>
-constexpr bool can_emit = requires(S s)
-{
-    s.emit(Args{}...);
-};
+constexpr bool can_emit = requires(S s) { s.emit(Args{}...); };
 
 TEST_CASE("signal")
 {
@@ -204,6 +202,24 @@ TEST_CASE("signal")
         REQUIRE(res == 1106);
     }
 
+    SECTION("provide first parameters by r-value")
+    {
+        int res{};
+
+        signal<int> s;
+        std::vector<int> a;
+        a.assign(50, 1000);
+        s.connect([&](const std::vector<int> a, int b,
+                      int v) { res = a[49] + b + v; },
+                  a, 100);
+        a.clear();
+        REQUIRE(res == 0);
+        s.emit(5);
+        REQUIRE(res == 1105);
+        s.emit(6);
+        REQUIRE(res == 1106);
+    }
+
     SECTION("take better matched overload")
     {
         struct lstr
@@ -337,6 +353,22 @@ TEST_CASE("signal")
         }
     }
 
+    SECTION("pending emission visible inside handler")
+    {
+        signal<int> s;
+        bool called = false;
+
+        s.connect([&](int) {
+            REQUIRE(s.pending_emission());
+            called = true;
+        });
+
+        REQUIRE_FALSE(s.pending_emission());
+        s.emit(1);
+        REQUIRE(called);
+        REQUIRE_FALSE(s.pending_emission());
+    }
+
     SECTION("emitting with r-value should call all slots with a copy")
     {
         signal<std::string> s;
@@ -365,6 +397,7 @@ TEST_CASE("signal_blocker")
 {
     STATIC_REQUIRE(
         std::is_nothrow_constructible_v<signal_blocker, signal<int>&>);
+    STATIC_REQUIRE(std::is_move_assignable_v<signal_blocker>);
 
     int res1{};
     int res2{};
@@ -425,6 +458,28 @@ TEST_CASE("signal_blocker")
         s.emit(25);
         REQUIRE(res1 == 25);
         REQUIRE(res2 == 5);
+    }
+
+    SECTION("move assignment keeps connections blocked")
+    {
+        {
+            signal_blocker blocker1{s};
+            signal_blocker blocker2{s};
+
+            blocker2 = std::move(blocker1);
+            s.emit(30);
+
+            REQUIRE(res1 == 5);
+            REQUIRE(res2 == 5);
+            REQUIRE(c1.blocked());
+            REQUIRE(c2.blocked());
+        }
+
+        REQUIRE_FALSE(c1.blocked());
+        REQUIRE_FALSE(c2.blocked());
+        s.emit(35);
+        REQUIRE(res1 == 35);
+        REQUIRE(res2 == 35);
     }
 }
 
@@ -596,6 +651,26 @@ TEST_CASE("connection")
         REQUIRE_FALSE(c.active());
         s.emit();
         REQUIRE(res == 2);
+    }
+
+    SECTION("disconnect_all removes pending connections")
+    {
+        signal<> s;
+        int primary_called{};
+        int pending_called{};
+
+        s.connect([&] {
+            ++primary_called;
+            s.connect([&] { ++pending_called; });
+            s.disconnect_all();
+        });
+
+        s.emit();
+        REQUIRE(primary_called == 1);
+
+        s.emit();
+        REQUIRE(primary_called == 1);
+        REQUIRE(pending_called == 0);
     }
 
     SECTION("disconnect not-invoked during iteration")

@@ -186,6 +186,10 @@ public:
             {
                 disconnect(c);
             }
+            for (auto& c : new_connections_)
+            {
+                disconnect(c);
+            }
         }
     }
 
@@ -248,6 +252,8 @@ public:
         }
         return CIRCLE_WARN_VAL(true, "Checking inactive connection if blocked");
     }
+
+    [[nodiscard]] auto iterations_depth() const { return iterations_depth_; }
 
 private:
     void post_invoke()
@@ -349,7 +355,7 @@ public:
     connection_blocker(const connection_blocker&) = delete;
     connection_blocker& operator=(const connection_blocker&) = delete;
     connection_blocker(connection_blocker&&) = delete;
-    connection_blocker operator==(connection_blocker&&) = delete;
+    connection_blocker operator=(connection_blocker&&) = delete;
 
     ~connection_blocker() { dismiss(); }
 
@@ -408,10 +414,11 @@ public:
     connection connect(slot_type f) const { return connect_fun(std::move(f)); }
 
     template <typename F, typename... LArgs>
-    connection connect(F&& f, LArgs&&... largs) const
+    connection connect(F&& f, LArgs... largs) const
     {
-        slot_type s = [f = std::forward<F>(f), largs...](Args... args) mutable {
-            detail::invoke(f, largs..., args...);
+        slot_type s = [f = std::forward<F>(f),
+                       ... l = std::move(largs)](Args... args) mutable {
+            detail::invoke(f, l..., args...);
         };
         return connect_fun(std::move(s));
     }
@@ -437,6 +444,11 @@ public:
     [[nodiscard]] bool owns(connection c) const noexcept
     {
         return c.active() && c.connections_.lock() == connections_;
+    }
+
+    [[nodiscard]] bool pending_emission() const
+    {
+        return connections_ && connections_->iterations_depth() != 0;
     }
 
 private:
@@ -513,7 +525,7 @@ public:
           state_{std::exchange(other.state_, state::dismissed)}
     {
     }
-    signal_blocker& operator==(signal_blocker&& other) noexcept
+    signal_blocker& operator=(signal_blocker&& other) noexcept
     {
         connections_ = std::move(other.connections_);
         state_ = std::exchange(other.state_, state::dismissed);

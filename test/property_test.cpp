@@ -364,6 +364,29 @@ TEST_CASE("property with value_provider")
         REQUIRE(p2 == 15);
     }
 
+    SECTION("pending provider update survives move")
+    {
+        c.disconnect();
+        property<int> p2{};
+        int change_count = 0;
+        auto extra_conn =
+            p.value_changed().connect([&](int) { ++change_count; });
+
+        p = test_provider::make(5);
+        auto* provider = test_provider::instance;
+        change_count = 0;
+
+        provider->value_ = 25;
+        provider->updating_();
+
+        property<int> moved = std::move(p);
+        provider->updated_();
+
+        REQUIRE(change_count == 1);
+        REQUIRE(moved == 25);
+        extra_conn.disconnect();
+    }
+
     SECTION("detach leaves value up-to-date")
     {
         c.disconnect();

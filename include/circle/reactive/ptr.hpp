@@ -124,9 +124,9 @@ public:
 
     void reset() noexcept
     {
-        if (data_)
+        if (data_ && !data_.before_destroyed_->pending_emission())
         {
-            before_destroyed()();
+            data_.before_destroyed_->emit();
             data_.data_.reset();
             data_.before_destroyed_ = nullptr;
         }

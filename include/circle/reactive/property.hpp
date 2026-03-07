@@ -5,6 +5,7 @@
 #include <concepts>
 #include <functional>
 #include <memory>
+#include <utility>
 
 namespace circle {
 
@@ -69,7 +70,9 @@ public:
           value_changing_{std::move(other.value_changing_)},
           value_changed_{std::move(other.value_changed_)},
           moved_{std::move(other.moved_)},
-          before_destroyed_{std::move(other.before_destroyed_)}
+          before_destroyed_{std::move(other.before_destroyed_)},
+          value_changed_by_provider_{
+              std::exchange(other.value_changed_by_provider_, false)}
     {
         other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
@@ -83,6 +86,8 @@ public:
         value_changed_ = std::move(other.value_changed_);
         moved_ = std::move(other.moved_);
         before_destroyed_ = std::move(other.before_destroyed_);
+        value_changed_by_provider_ =
+            std::exchange(other.value_changed_by_provider_, false);
 
         other.provider_observer_.disconnect();
         assign(std::move(other.provider_));
@@ -264,6 +269,7 @@ public:
     {
         property_ = other.property_;
         moved_connection_ = connect_moved();
+        return *this;
     }
 
     property_ref(property_ref&& other) noexcept
