@@ -6,6 +6,7 @@ include(Catch)
 
 add_executable(circle-reactive-test
     bind_test.cpp
+    interception_test.cpp
     connections_handler_test.cpp
     observer_test.cpp
     property_test.cpp
@@ -20,6 +21,10 @@ target_link_libraries(circle-reactive-test PRIVATE
 )
 
 catch_discover_tests(circle-reactive-test)
+
+add_executable(circle-reactive-memory-test property_memory_test.cpp)
+target_link_libraries(circle-reactive-memory-test PRIVATE circle::reactive)
+add_test(NAME property-memory COMMAND circle-reactive-memory-test)
 
 if (REACTIVE_CPP_COVERAGE)
     add_gcovr_target_html(circle-reactive-coverage

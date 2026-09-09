@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <optional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -865,6 +866,34 @@ TEST_CASE("connection_blocker")
 
     s.emit(25);
     REQUIRE(res == 25);
+}
+
+TEST_CASE("Signal destruction during emission disconnects remaining callbacks",
+          "[signal][regression]")
+{
+    auto s = std::make_unique<signal<>>();
+    bool callback_returned = false;
+    int remaining_calls = 0;
+    connection first;
+    connection remaining;
+
+    first = s->connect([&] {
+        s.reset();
+        // Destruction must revoke connections even while emit keeps the
+        // invocation storage alive until this callback returns.
+        CHECK_FALSE(first.active());
+        CHECK_FALSE(remaining.active());
+        callback_returned = true;
+    });
+    remaining = s->connect([&] { ++remaining_calls; });
+
+    s->emit();
+
+    REQUIRE_FALSE(s);
+    REQUIRE(callback_returned);
+    REQUIRE(remaining_calls == 0);
+    REQUIRE_FALSE(first.active());
+    REQUIRE_FALSE(remaining.active());
 }
 
 TEST_CASE("bad usage")

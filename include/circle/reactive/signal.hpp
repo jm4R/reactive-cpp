@@ -32,7 +32,8 @@ constexpr void invoke_impl(std::index_sequence<Is...>, F&& f, Tuple&& args)
     }
     else if constexpr (sizeof...(Is) > 0)
     {
-        static_assert(sizeof...(Is) > 0, "Not invocable with arguments supplied");
+        static_assert(sizeof...(Is) > 0,
+                      "Not invocable with arguments supplied");
         invoke_impl(std::make_index_sequence<sizeof...(Is) - 1>(),
                     std::forward<F>(f), std::move(args));
     }
@@ -389,6 +390,11 @@ class signal
 
 public:
     signal() = default;
+    ~signal()
+    {
+        if (connections_)
+            connections_->disconnect_all();
+    }
 
     signal(const signal&) = delete;
     signal& operator=(const signal&) = delete;
@@ -402,7 +408,8 @@ public:
         if (!connections_)
             return;
 
-        connections_->invoke(std::forward<LArgs>(largs)...);
+        auto connections = connections_;
+        connections->invoke(std::forward<LArgs>(largs)...);
     }
 
     template <typename... LArgs>
